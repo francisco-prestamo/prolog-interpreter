@@ -20,10 +20,11 @@ export async function POST(request: Request) {
         }
 
         const objectives = parseQuery(query);
+
         const rootNode: NodePL = {
             id: "root",
             children: [],
-            clause: { head: { name: "root", arguments: [] }, body: [] },
+            clause: { head: { name: "root", arguments: [], introducedBy: null }, body: [] },
             unifier: new Map(),
             unifierText: "",
             objective: objectives,
@@ -32,6 +33,9 @@ export async function POST(request: Request) {
         interpret(storedClauses, objectives, rootNode);
 
         const solutions = findSolutions(rootNode);
+
+        console.log(solutions);
+        console.log(rootNode);
         console.log(
             JSON.stringify(
                 {
@@ -43,6 +47,7 @@ export async function POST(request: Request) {
                 2
             )
         );
+
         return NextResponse.json({
             result: "Query Success",
             solutions,
@@ -59,9 +64,9 @@ export async function POST(request: Request) {
 
 function parseClauses(clauses: string): Clause[] {
     return clauses.split("\n")
-        .filter(line => line.trim())
+        .filter((line) => line.trim())
         .map((line) => {
-            const [head, body] = line.split(":-").map(part => part.trim());
+            const [head, body] = line.split(":-").map((part) => part.trim());
             const parsedHead = parseSubclause(head);
             const parsedBody = body ? splitBodyClauses(body) : [];
 
@@ -87,10 +92,18 @@ function splitBodyClauses(body: string): Subclause[] {
 
     if (current.trim()) subclauses.push(current.trim());
 
-    return subclauses.map(subclause => parseSubclause(subclause));
+    return subclauses.map((subclause) => parseSubclause(subclause));
 }
 
 function parseSubclause(subclause: string): Subclause {
+    if (subclause.trim() === "!") {
+        return {
+            name: "!",
+            arguments: [],
+            introducedBy: null,
+        };
+    }
+
     const matchResult = subclause.match(/^([^(]+)\(([^)]*)\)$/);
     if (!matchResult) {
         throw new Error(`Invalid subclause format: "${subclause}"`);
@@ -99,12 +112,13 @@ function parseSubclause(subclause: string): Subclause {
     const [, name, args] = matchResult;
     const argumentsList = args
         .split(",")
-        .map(arg => arg.trim())
-        .filter(arg => arg.length > 0);
+        .map((arg) => arg.trim())
+        .filter((arg) => arg.length > 0);
 
     return {
         name: name.trim(),
         arguments: argumentsList,
+        introducedBy: null,
     };
 }
 

@@ -13,11 +13,13 @@ export interface NodePL {
     unifier: Map<string, Term>;
     unifierText: string;
     objective: Subclause[];
+    processedCut?: boolean;
 }
 
 export interface Subclause {
     name: string;
     arguments: Term[];
+    introducedBy: string | null;
 }
 
 export interface Clause {
@@ -25,7 +27,6 @@ export interface Clause {
     body: Subclause[];
 }
 
-// Helper functions for variable handling
 const isVariable = (term: Term): boolean => {
     if (typeof term === "string") {
         return term.length > 0 && term[0] >= "A" && term[0] <= "Z";
@@ -65,7 +66,7 @@ export const unify = (
     ) {
         return null;
     }
-    console.log(clause,subclause)
+
     const newUnifier = new Map(unifier);
 
     for (let i = 0; i < clause.head.arguments.length; i++) {
@@ -117,7 +118,7 @@ export const substituteVariables = (
     unifier: Map<string, Term>
 ): Subclause => {
     return {
-        name: subclause.name,
+        ...subclause,
         arguments: subclause.arguments.map((arg) => {
             if (isVariable(arg)) {
                 const varName = typeof arg === "string" ? arg : arg.name;
@@ -138,12 +139,12 @@ const renameVariables = (clause: Clause, nodeId: string): Clause => {
     };
 
     const renamedHead: Subclause = {
-        name: clause.head.name,
+        ...clause.head,
         arguments: clause.head.arguments.map(renameTerm),
     };
 
     const renamedBody: Subclause[] = clause.body.map((subclause) => ({
-        name: subclause.name,
+        ...subclause,
         arguments: subclause.arguments.map(renameTerm),
     }));
 
@@ -159,37 +160,67 @@ export const interpret = (
     currentNode: NodePL,
     globalUnifiers: Map<string, Term>[] = [],
     usageCount: Map<number, number> = new Map()
-): void => {
+): boolean => {
     if (objectives.length === 0) {
         if (currentNode.unifier.size > 0) {
             globalUnifiers.push(new Map(currentNode.unifier));
         }
-        return;
+        return true;
     }
 
     const currentObjective = objectives[0];
     const remainingObjectives = objectives.slice(1);
 
-    for (let i = 0; i < clauses.length; i++) {
-        const clause = clauses[i];
+    if (currentObjective.name === "!") {
+        const newNode: NodePL = {
+            id: `${currentNode.id}-cut`,
+            fatherId: currentNode.id,
+            children: [],
+            clause: { head: currentObjective, body: [] },
+            unifier: new Map(currentNode.unifier),
+            unifierText: "Cut operator",
+            objective: remainingObjectives,
+        };
+        currentNode.children.push(newNode);
 
+        currentNode.processedCut = true;
+
+        const success = interpret(
+            clauses,
+            remainingObjectives,
+            newNode,
+            globalUnifiers,
+            usageCount
+        );
+
+        return true;
+    }
+
+    for (let i = 0; i < clauses.length; i++) {
+        const hasProcessedCut = currentNode.processedCut === true;
+
+        if (hasProcessedCut && i > 0) {
+            return false;
+        }
+
+        const clause = clauses[i];
         const currentUsage = (usageCount.get(i) || 0) + 1;
         usageCount.set(i, currentUsage);
 
         const nodeId = `${i + 1}-${currentUsage}`;
-
         const renamedClause = renameVariables(clause, nodeId);
-        // For the Unifier be acumulative and going to the SRC+
-        // const unifier = unify(renamedClause, currentObjective, currentNode.unifier);
-        const unifier = unify(renamedClause, currentObjective)
 
-        console.log("unifier", unifier);
+        const unifier = unify(renamedClause, currentObjective);
+
         if (unifier) {
             const updatedObjectives = [
-                ...renamedClause.body,
+                ...renamedClause.body.map((obj) => ({
+                    ...obj,
+                    introducedBy: nodeId,
+                })),
                 ...remainingObjectives.map((obj) => substituteVariables(obj, unifier)),
             ];
-            console.log("unifieddddddd", unifier);
+
             const newNode: NodePL = {
                 id: nodeId,
                 fatherId: currentNode.id,
@@ -198,20 +229,26 @@ export const interpret = (
                 unifier,
                 unifierText: generateUnifierText(unifier),
                 objective: updatedObjectives,
+                processedCut: false,
             };
-            console.log(newNode);
 
             currentNode.children.push(newNode);
 
-            interpret(clauses, updatedObjectives, newNode, globalUnifiers, usageCount);
-        } else {
-            console.log(
-                `Failed to unify clause: ${JSON.stringify(renamedClause.head)} with objective: ${JSON.stringify(currentObjective)}`
+            const success = interpret(
+                clauses,
+                updatedObjectives,
+                newNode,
+                globalUnifiers,
+                usageCount
             );
-        }
 
-        usageCount.set(i, currentUsage);
+            if (success) {
+                return true;
+            }
+        }
     }
+
+    return false;
 };
 
 export const assignClauseIndices = (clauses: Clause[]): Map<Clause, number> => {
