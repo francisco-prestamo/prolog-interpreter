@@ -18,9 +18,10 @@ export async function POST(request: Request) {
         if (clauses) {
             storedClauses = parseClauses(clauses);
         }
+        console.log(JSON.stringify(storedClauses,null,4));
 
         const objectives = parseQuery(query);
-
+        console.log(JSON.stringify(objectives,null,4));
         const rootNode: NodePL = {
             id: "root",
             children: [],
@@ -34,8 +35,6 @@ export async function POST(request: Request) {
 
         const solutions = findSolutions(rootNode);
 
-        console.log(solutions);
-        console.log(rootNode);
         console.log(
             JSON.stringify(
                 {
@@ -104,6 +103,19 @@ function parseSubclause(subclause: string): Subclause {
         };
     }
 
+    const listMatch = subclause.match(/^([^(]+)\[(.*)\]$/);
+    if (listMatch) {
+        // Handling list type arguments
+        const [, name, args] = listMatch;
+        const argumentsList = parseListArguments(args);
+        return {
+            name: name.trim(),
+            arguments: argumentsList,
+            introducedBy: null,
+        };
+    }
+
+    // Check if the argument is a list
     const matchResult = subclause.match(/^([^(]+)\(([^)]*)\)$/);
     if (!matchResult) {
         throw new Error(`Invalid subclause format: "${subclause}"`);
@@ -113,13 +125,61 @@ function parseSubclause(subclause: string): Subclause {
     const argumentsList = args
         .split(",")
         .map((arg) => arg.trim())
-        .filter((arg) => arg.length > 0);
+        .filter((arg) => arg.length > 0)
+        .map((arg) => parseArgument(arg));
 
     return {
         name: name.trim(),
         arguments: argumentsList,
         introducedBy: null,
     };
+}
+
+function parseArgument(arg: string): Term {
+
+    if (arg.startsWith("[") && arg.endsWith("]")) {
+        const listContent = arg.slice(1, -1);
+        if(listContent.trim() === "") {
+            return { type: "list", value: [] }
+        }
+        const listParts = splitFirstList(listContent);
+
+        return { type: "list", value: listParts.map(parseArgument) };
+    }
+
+    return { type: "atom", value: arg };
+}
+
+function splitFirstList(content: string): string[] {
+    let pipeIndex = content.indexOf("|");
+
+    if (pipeIndex === -1) {
+        return [content];
+    }
+
+    const head = content.slice(0, pipeIndex).trim();
+    const tail = content.slice(pipeIndex + 1).trim();
+
+    return [head, tail];
+}
+
+
+function parseListArguments(args: string): Term[] {
+
+    const listMatch = args.match(/^\[(.*)\|(.+)\]$/);
+    if (listMatch) {
+        const [, head, tail] = listMatch;
+
+
+        return [
+            { type: "atom", value: head.trim() },
+            { type: "list", value: parseArgument(tail.trim()) },
+        ];
+    }
+
+    return args.split(",").map((arg) => {
+        return { type: "atom", value: arg.trim() };
+    });
 }
 
 function parseQuery(query: string): Subclause[] {

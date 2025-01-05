@@ -101,7 +101,7 @@ export const QueryForm = (): React.ReactElement => {
             .reduce((acc, part, index) => {
                 const cleanedPart = part.trim();
                 if (cleanedPart) {
-                    acc[`unifier_${index + 1}`] = cleanedPart;
+                    acc[`${index + 1}`] = cleanedPart;
                 }
                 return acc;
             }, {} as Record<string, string>);

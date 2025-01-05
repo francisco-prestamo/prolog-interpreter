@@ -1,19 +1,25 @@
-export interface Variable {
-    name: string;
-    value?: Term;
+export interface Atom {
+    type: "atom";
+    value: string;
 }
 
-export type Term = string | Variable;
+export interface List {
+    type: "list";
+    value: Term[];
+}
+
+export type Term = Atom | List;
 
 export interface NodePL {
     id: string;
     fatherId?: string;
-    children: NodePL[];
+
     clause: Clause;
-    unifier: Map<string, Term>;
+    unifier: Map<Term, Term>;
     unifierText: string;
     objective: Subclause[];
     processedCut?: boolean;
+    children: NodePL[];
 }
 
 export interface Subclause {
@@ -28,113 +34,122 @@ export interface Clause {
 }
 
 const isVariable = (term: Term): boolean => {
-    if (typeof term === "string") {
-        return term.length > 0 && term[0] >= "A" && term[0] <= "Z";
+    if (term.type === "atom") {
+        return /^[A-Z]/.test(term.value);
     }
-    return term.hasOwnProperty("name");
+    return false;
 };
 
-export const createVariable = (name: string): Variable => ({
-    name,
-    value: undefined,
-});
+const isList = (term: Term): boolean => term.type === "list";
 
-const generateUnifierText = (unifier: Map<string, Term>): string => {
-    const entries = Array.from(unifier.entries());
-    if (entries.length === 0) return "No unification needed.";
 
-    return entries
-        .map(([key, value]) => {
-            if (typeof value === "string") {
-                return ` ${value}:${key},`;
-            } else if (typeof value === "object" && value.name) {
-                return ` ${value.name}:${key},`;
-            }
-            return `${key} is unified with an unknown term.`;
-        })
-        .join(" ");
+const parseTerm = (term: any): Term => {
+    if (term.type === "atom") {
+        return term;
+    } else if (term.type === "list") {
+        return {
+            type: "list",
+            value: term.value.map(parseTerm),
+        };
+    }
+    throw new Error("Unknown term type");
 };
 
-export const unify = (
-    clause: Clause,
-    subclause: Subclause,
-    unifier: Map<string, Term> = new Map()
-): Map<string, Term> | null => {
-    if (
-        clause.head.name !== subclause.name ||
-        clause.head.arguments.length !== subclause.arguments.length
-    ) {
-        return null;
+const areTermsEqual = (term1: Term, term2: Term): boolean => {
+    if (term1.type !== term2.type) {
+        return false;
+    }
+    if (term1.type === "atom" && term2.type === "atom") {
+        return term1.value === term2.value;
     }
 
-    const newUnifier = new Map(unifier);
-
-    for (let i = 0; i < clause.head.arguments.length; i++) {
-        const clauseArg = clause.head.arguments[i];
-        const subclauseArg = subclause.arguments[i];
-
-        const resolvedClauseArg = resolveVariable(clauseArg, newUnifier);
-        const resolvedSubclauseArg = resolveVariable(subclauseArg, newUnifier);
-
-        if (isVariable(resolvedClauseArg)) {
-            const varName = typeof resolvedClauseArg === "string" ? resolvedClauseArg : resolvedClauseArg.name;
-
-            if (isVariable(resolvedSubclauseArg)) {
-                const subclauseVarName = typeof resolvedSubclauseArg === "string"
-                    ? resolvedSubclauseArg
-                    : resolvedSubclauseArg.name;
-
-                if (varName !== subclauseVarName) {
-                    newUnifier.set(varName, resolvedSubclauseArg);
-                }
-            } else {
-                newUnifier.set(varName, resolvedSubclauseArg);
-            }
-        } else if (isVariable(resolvedSubclauseArg)) {
-            const varName = typeof resolvedSubclauseArg === "string" ? resolvedSubclauseArg : resolvedSubclauseArg.name;
-            newUnifier.set(varName, resolvedClauseArg);
-        } else if (resolvedClauseArg !== resolvedSubclauseArg) {
-            return null;
-        }
-    }
-
-    return newUnifier;
+    return false;
 };
 
-const resolveVariable = (term: Term, unifier: Map<string, Term>): Term => {
+const resolveVariable = (term: Term, unifier: Map<Term, Term>): Term => {
+
     while (isVariable(term)) {
-        const varName = typeof term === "string" ? term : term.name;
-        const resolvedValue = unifier.get(varName);
-        if (!resolvedValue || resolvedValue === term) {
+        let resolved = false;
+
+        for (let [key, value] of unifier) {
+            if (areTermsEqual(value, term)) {
+
+                term = key;
+                resolved = true;
+                break;
+            }
+        }
+
+        if (!resolved) {
             break;
         }
-        term = resolvedValue;
     }
+
     return term;
 };
 
-export const substituteVariables = (
-    subclause: Subclause,
-    unifier: Map<string, Term>
-): Subclause => {
-    return {
-        ...subclause,
-        arguments: subclause.arguments.map((arg) => {
-            if (isVariable(arg)) {
-                const varName = typeof arg === "string" ? arg : arg.name;
-                return unifier.get(varName) || arg;
-            }
-            return arg;
-        }),
-    };
+const unifyLists = (
+    clauseHead: Term,
+    subclauseHead: Term,
+    unifier: Map<Term, Term>
+): Map<Term, Term> | null => {
+
+    const resolvedClauseHead = resolveVariable(clauseHead, unifier);
+    let resolvedSubclauseHead = resolveVariable(subclauseHead, unifier);
+
+    if(isList(resolvedClauseHead) && isList(resolvedSubclauseHead) && resolvedClauseHead.value.length === 0 && resolvedSubclauseHead.value.length === 0){
+
+        return unifier
+    }
+    if (isList(resolvedClauseHead) && isList(resolvedSubclauseHead) && (resolvedClauseHead.value.length > 0 && resolvedSubclauseHead.value.length > 0)) {
+
+        while(isList(resolvedSubclauseHead.value[0])){
+            resolvedSubclauseHead=resolvedSubclauseHead.value[0];
+        }
+
+        const clauseValues = (resolvedClauseHead as List).value;
+        const subclauseValues = (resolvedSubclauseHead as List).value;
+
+        if (clauseValues.length !== subclauseValues.length) {
+            return null;
+        }
+
+        for (let i = 0; i < clauseValues.length; i++) {
+            const unified = unifyLists(clauseValues[i], subclauseValues[i], unifier);
+
+            if (!unified) return null;
+        }
+    }else if (isVariable(resolvedClauseHead) && isList(resolvedSubclauseHead)) {
+        unifier.set(resolvedSubclauseHead,resolvedClauseHead)
+    } else if (isList(resolvedClauseHead) && isVariable(resolvedSubclauseHead)) {
+        unifier.set(resolvedClauseHead,resolvedSubclauseHead)
+    }else if (isVariable(resolvedClauseHead) || isVariable(resolvedSubclauseHead)) {
+        if (resolvedClauseHead !== resolvedSubclauseHead) {
+            unifier.set(resolvedSubclauseHead,resolvedClauseHead);
+        }
+    } else if (resolvedClauseHead.value !== resolvedSubclauseHead.value) {
+        return null;
+    }
+
+    return unifier;
 };
 
 const renameVariables = (clause: Clause, nodeId: string): Clause => {
     const renameTerm = (term: Term): Term => {
         if (isVariable(term)) {
-            const varName = typeof term === "string" ? term : term.name;
-            return `${varName}-${nodeId}`;
+            return {
+                type: "atom",
+                value: `${term.value}-${nodeId}`,
+            };
         }
+
+        if (isList(term)) {
+            return {
+                type: "list",
+                value: term.value.map(renameTerm),
+            };
+        }
+
         return term;
     };
 
@@ -154,11 +169,82 @@ const renameVariables = (clause: Clause, nodeId: string): Clause => {
     };
 };
 
+const unify = (
+    clause: Clause,
+    subclause: Subclause,
+    unifier: Map<Term, Term> = new Map()
+): Map<Term, Term> | null => {
+    if (
+        clause.head.name !== subclause.name ||
+        clause.head.arguments.length !== subclause.arguments.length
+    ) {
+        return null;
+    }
+
+
+    const newUnifier = new Map(unifier);
+
+    for (let i = 0; i < clause.head.arguments.length; i++) {
+        const clauseArg = clause.head.arguments[i];
+        const subclauseArg = subclause.arguments[i];
+
+        const resolvedClauseArg = resolveVariable(clauseArg, newUnifier);
+        const resolvedSubclauseArg = resolveVariable(subclauseArg, newUnifier);
+
+        if (isVariable(resolvedClauseArg)) {
+            newUnifier.set(resolvedSubclauseArg,resolvedClauseArg );
+        } else if (isVariable(resolvedSubclauseArg)) {
+            newUnifier.set( resolvedClauseArg,resolvedSubclauseArg);
+        } else if (resolvedClauseArg.value !== resolvedSubclauseArg.value) {
+            if (
+                isList(resolvedClauseArg) &&
+                isList(resolvedSubclauseArg)
+            ) {
+                const listHeadUnifier = unifyLists(
+                    resolvedClauseArg,
+                    resolvedSubclauseArg,
+                    newUnifier
+                );
+                if (!listHeadUnifier) return null;
+            } else {
+                return null;
+            }
+        }
+    }
+
+    return newUnifier;
+};
+
+export const substituteVariables = (
+    subclause: Subclause,
+    unifier: Map<Term, Term>
+): Subclause => {
+
+    const substituteTerms = (term: Term): Term => {
+
+        const resolvedTerm = resolveVariable(term, unifier);
+
+        if (isList(resolvedTerm)) {
+            return {
+                type: "list",
+                value: (resolvedTerm as List).value.map(substituteTerms)
+            };
+        }
+
+        return resolvedTerm;
+    };
+
+    return {
+        ...subclause,
+        arguments: subclause.arguments.map(substituteTerms)
+    };
+};
+
 export const interpret = (
     clauses: Clause[],
     objectives: Subclause[],
     currentNode: NodePL,
-    globalUnifiers: Map<string, Term>[] = [],
+    globalUnifiers: Map<Term, Term>[] = [],
     usageCount: Map<number, number> = new Map()
 ): boolean => {
     if (objectives.length === 0) {
@@ -171,88 +257,60 @@ export const interpret = (
     const currentObjective = objectives[0];
     const remainingObjectives = objectives.slice(1);
 
-    if (currentObjective.name === "!") {
-        const newNode: NodePL = {
-            id: `${currentNode.id}-cut`,
-            fatherId: currentNode.id,
-            children: [],
-            clause: { head: currentObjective, body: [] },
-            unifier: new Map(currentNode.unifier),
-            unifierText: "Cut operator",
-            objective: remainingObjectives,
-        };
-        currentNode.children.push(newNode);
-
-        currentNode.processedCut = true;
-
-        const success = interpret(
-            clauses,
-            remainingObjectives,
-            newNode,
-            globalUnifiers,
-            usageCount
-        );
-
-        return true;
-    }
-
     for (let i = 0; i < clauses.length; i++) {
-        const hasProcessedCut = currentNode.processedCut === true;
 
-        if (hasProcessedCut && i > 0) {
-            return false;
-        }
+        const currentCount = usageCount.get(i) || 0;
+        usageCount.set(i, currentCount + 1);
 
         const clause = clauses[i];
-        const currentUsage = (usageCount.get(i) || 0) + 1;
-        usageCount.set(i, currentUsage);
 
-        const nodeId = `${i + 1}-${currentUsage}`;
-        const renamedClause = renameVariables(clause, nodeId);
+        const varId = `${i + 1}-${currentCount + 1}`;
+        const renamedClause = renameVariables(clause, varId);
 
         const unifier = unify(renamedClause, currentObjective);
 
+
         if (unifier) {
             const updatedObjectives = [
-                ...renamedClause.body.map((obj) => ({
-                    ...obj,
-                    introducedBy: nodeId,
-                })),
-                ...remainingObjectives.map((obj) => substituteVariables(obj, unifier)),
+                ...renamedClause.body.map((subclause) =>
+                    substituteVariables(subclause, unifier)
+                ),
+                ...remainingObjectives.map((obj) =>
+                    substituteVariables(obj, unifier)
+                ),
             ];
 
+            const newNodeId = currentNode.id === "0"
+                ? `${i + 1}`
+                : `${currentNode.id}.${i + 1}`;
+
             const newNode: NodePL = {
-                id: nodeId,
+                id: newNodeId,
                 fatherId: currentNode.id,
                 children: [],
                 clause: renamedClause,
                 unifier,
-                unifierText: generateUnifierText(unifier),
+                unifierText: Array.from(unifier.entries())
+                    .map(([key, value]) => `${termToString(key)} = ${termToString(value)}`)
+                    .join(", "),
                 objective: updatedObjectives,
-                processedCut: false,
             };
 
             currentNode.children.push(newNode);
-
-            const success = interpret(
-                clauses,
-                updatedObjectives,
-                newNode,
-                globalUnifiers,
-                usageCount
-            );
-
-            if (success) {
-                return true;
-            }
+            interpret(clauses, updatedObjectives, newNode, globalUnifiers, usageCount);
         }
     }
 
     return false;
 };
 
-export const assignClauseIndices = (clauses: Clause[]): Map<Clause, number> => {
-    const clauseIndices = new Map<Clause, number>();
-    clauses.forEach((clause, index) => clauseIndices.set(clause, index + 1));
-    return clauseIndices;
+const termToString = (term: Term): string => {
+    if (isVariable(term)) {
+        return term.value;
+    }
+    if (isList(term)) {
+        const listContent = term.value.map(termToString).join("| ");
+        return `[${listContent}]`;
+    }
+    return term.value;
 };
