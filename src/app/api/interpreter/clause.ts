@@ -42,17 +42,17 @@ const isVariable = (term: Term): boolean => {
 const isList = (term: Term): boolean => term.type === "list";
 
 
-const parseTerm = (term: any): Term => {
-    if (term.type === "atom") {
-        return term;
-    } else if (term.type === "list") {
-        return {
-            type: "list",
-            value: term.value.map(parseTerm),
-        };
-    }
-    throw new Error("Unknown term type");
-};
+// const parseTerm = (term: Term): Term => {
+//     if (term.type === "atom") {
+//         return term;
+//     } else if (term.type === "list") {
+//         return {
+//             type: "list",
+//             value: term.value.map(parseTerm),
+//         };
+//     }
+//     throw new Error("Unknown term type");
+// };
 
 const areTermsEqual = (term1: Term, term2: Term): boolean => {
     if (term1.type !== term2.type) {
@@ -65,23 +65,37 @@ const areTermsEqual = (term1: Term, term2: Term): boolean => {
     return false;
 };
 
-const resolveVariable = (term: Term, unifier: Map<Term, Term>): Term => {
+const resolveTerm = (term: Term, unifier: Map<Term, Term>, seen: Set<string> = new Set()): Term => {
+    // Break if we've seen this term before to prevent infinite loops
+    if (seen.has(JSON.stringify(term))) {
+        return term;
+    }
+    seen.add(JSON.stringify(term));
 
-    while (isVariable(term)) {
-        let resolved = false;
-
-        for (let [key, value] of unifier) {
+    // Resolve variable-like terms
+    if (isVariable(term)) {
+        for (const [key, value] of unifier) {
             if (areTermsEqual(value, term)) {
+                return resolveTerm(key, unifier, seen);
+            }
+        }
+        return term;
+    }
 
-                term = key;
-                resolved = true;
-                break;
+    // Resolve lists recursively
+    if (term.type === 'list') {
+        // First try to resolve the entire list
+        for (const [key, value] of unifier) {
+            if (areTermsEqual(value, term)) {
+                return resolveTerm(key, unifier, seen);
             }
         }
 
-        if (!resolved) {
-            break;
-        }
+        // If list wasn't resolved as a whole, resolve its elements
+        return {
+            type: 'list',
+            value: term.value.map(t => resolveTerm(t, unifier, seen))
+        };
     }
 
     return term;
@@ -93,8 +107,8 @@ const unifyLists = (
     unifier: Map<Term, Term>
 ): Map<Term, Term> | null => {
 
-    const resolvedClauseHead = resolveVariable(clauseHead, unifier);
-    let resolvedSubclauseHead = resolveVariable(subclauseHead, unifier);
+    const resolvedClauseHead = resolveTerm(clauseHead, unifier);
+    let resolvedSubclauseHead = resolveTerm(subclauseHead, unifier);
 
     if(isList(resolvedClauseHead) && isList(resolvedSubclauseHead) && resolvedClauseHead.value.length === 0 && resolvedSubclauseHead.value.length === 0){
 
@@ -102,8 +116,8 @@ const unifyLists = (
     }
     if (isList(resolvedClauseHead) && isList(resolvedSubclauseHead) && (resolvedClauseHead.value.length > 0 && resolvedSubclauseHead.value.length > 0)) {
 
-        while(isList(resolvedSubclauseHead.value[0]) && resolvedSubclauseHead.value.length == 1) {
-            resolvedSubclauseHead=resolvedSubclauseHead.value[0];
+        while(isList((resolvedSubclauseHead as List).value[0]) && resolvedSubclauseHead.value.length == 1) {
+            resolvedSubclauseHead=(resolvedSubclauseHead.value[0] as List);
         }
 
         const clauseValues = (resolvedClauseHead as List).value;
@@ -145,7 +159,7 @@ const renameVariables = (clause: Clause, nodeId: string): Clause => {
         if (isList(term)) {
             return {
                 type: "list",
-                value: term.value.map(renameTerm),
+                value: (term as List).value.map(renameTerm),
             };
         }
 
@@ -187,8 +201,8 @@ const unify = (
         const clauseArg = clause.head.arguments[i];
         const subclauseArg = subclause.arguments[i];
 
-        const resolvedClauseArg = resolveVariable(clauseArg, newUnifier);
-        const resolvedSubclauseArg = resolveVariable(subclauseArg, newUnifier);
+        const resolvedClauseArg = resolveTerm(clauseArg, newUnifier);
+        const resolvedSubclauseArg = resolveTerm(subclauseArg, newUnifier);
 
         if (isVariable(resolvedClauseArg)) {
             newUnifier.set(resolvedSubclauseArg,resolvedClauseArg );
@@ -221,7 +235,7 @@ export const substituteVariables = (
 
     const substituteTerms = (term: Term): Term => {
 
-        const resolvedTerm = resolveVariable(term, unifier);
+        const resolvedTerm = resolveTerm(term, unifier);
 
         if (isList(resolvedTerm)) {
             return {
@@ -270,6 +284,7 @@ export const interpret = (
 
 
         if (unifier) {
+
             usageCount.set(i, currentCount + 1);
             const updatedObjectives = [
                 ...renamedClause.body.map((subclause) =>
@@ -304,13 +319,15 @@ export const interpret = (
     return false;
 };
 
+
+
 const termToString = (term: Term): string => {
     if (isVariable(term)) {
-        return term.value;
+        return (term as Atom).value;
     }
     if (isList(term)) {
-        const listContent = term.value.map(termToString).join("| ");
+        const listContent = (term as List).value.map(termToString).join("| ");
         return `[${listContent}]`;
     }
-    return term.value;
+    return (term as Atom).value;
 };

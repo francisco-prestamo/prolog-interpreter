@@ -187,7 +187,7 @@ function parseListArguments(args: string): Term[] {
 
         return [
             { type: "atom", value: head.trim() },
-            { type: "list", value: parseArgument(tail.trim()) },
+            { type: "list", value: parseArgument(tail.trim()).value as Term[] },
         ];
     }
 
@@ -207,7 +207,7 @@ function findSolutions(node: NodePL): Record<string, Term>[] {
         if (currentNode.objective.length === 0) {
             const serializedUnifier: Record<string, Term> = {};
             currentNode.unifier.forEach((value, key) => {
-                serializedUnifier[key] = value;
+                serializedUnifier[String(key)] = value; // Ensure key is treated as a string
             });
             solutions.push(serializedUnifier);
         }
