@@ -103,7 +103,7 @@ const unifyLists = (
     }
     if (isList(resolvedClauseHead) && isList(resolvedSubclauseHead) && (resolvedClauseHead.value.length > 0 && resolvedSubclauseHead.value.length > 0)) {
 
-        while(isList(resolvedSubclauseHead.value[0])){
+        while(isList(resolvedSubclauseHead.value[0]) && resolvedSubclauseHead.value.length == 1) {
             resolvedSubclauseHead=resolvedSubclauseHead.value[0];
         }
 

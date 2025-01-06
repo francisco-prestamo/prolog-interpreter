@@ -151,7 +151,21 @@ function parseArgument(arg: string): Term {
 }
 
 function splitFirstList(content: string): string[] {
-    let pipeIndex = content.indexOf("|");
+    let pipeIndex = -1;
+    let bracketLevel = 0;
+
+    for (let i = 0; i < content.length; i++) {
+        const char = content[i];
+
+        if (char === '[') {
+            bracketLevel++;
+        } else if (char === ']') {
+            bracketLevel--;
+        } else if (char === '|' && bracketLevel === 0) {
+            pipeIndex = i;
+            break;
+        }
+    }
 
     if (pipeIndex === -1) {
         return [content];
