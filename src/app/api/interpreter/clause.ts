@@ -13,7 +13,6 @@ export type Term = Atom | List;
 export interface NodePL {
     id: string;
     fatherId?: string;
-
     clause: Clause;
     unifier: Map<Term, Term>;
     unifierText: string;
@@ -260,7 +259,7 @@ export const interpret = (
     for (let i = 0; i < clauses.length; i++) {
 
         const currentCount = usageCount.get(i) || 0;
-        usageCount.set(i, currentCount + 1);
+
 
         const clause = clauses[i];
 
@@ -271,6 +270,7 @@ export const interpret = (
 
 
         if (unifier) {
+            usageCount.set(i, currentCount + 1);
             const updatedObjectives = [
                 ...renamedClause.body.map((subclause) =>
                     substituteVariables(subclause, unifier)
