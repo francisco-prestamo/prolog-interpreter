@@ -65,36 +65,20 @@ const areTermsEqual = (term1: Term, term2: Term): boolean => {
     return false;
 };
 
-const resolveTerm = (term: Term, unifier: Map<Term, Term>, seen: Set<string> = new Set()): Term => {
-    // Break if we've seen this term before to prevent infinite loops
-    if (seen.has(JSON.stringify(term))) {
-        return term;
-    }
-    seen.add(JSON.stringify(term));
-
-    // Resolve variable-like terms
+const resolveTerm = (term: Term, unifier: Map<Term, Term>): Term => {
     if (isVariable(term)) {
         for (const [key, value] of unifier) {
-            if (areTermsEqual(value, term)) {
-                return resolveTerm(key, unifier, seen);
+            if (areTermsEqual(key, term)) {
+                return resolveTerm(value, unifier);
             }
         }
         return term;
     }
 
-    // Resolve lists recursively
     if (term.type === 'list') {
-        // First try to resolve the entire list
-        for (const [key, value] of unifier) {
-            if (areTermsEqual(value, term)) {
-                return resolveTerm(key, unifier, seen);
-            }
-        }
-
-        // If list wasn't resolved as a whole, resolve its elements
         return {
             type: 'list',
-            value: term.value.map(t => resolveTerm(t, unifier, seen))
+            value: term.value.map(t => resolveTerm(t, unifier))
         };
     }
 
@@ -111,7 +95,6 @@ const unifyLists = (
     let resolvedSubclauseHead = resolveTerm(subclauseHead, unifier);
 
     if(isList(resolvedClauseHead) && isList(resolvedSubclauseHead) && resolvedClauseHead.value.length === 0 && resolvedSubclauseHead.value.length === 0){
-
         return unifier
     }
     if (isList(resolvedClauseHead) && isList(resolvedSubclauseHead) && (resolvedClauseHead.value.length > 0 && resolvedSubclauseHead.value.length > 0)) {
@@ -129,21 +112,46 @@ const unifyLists = (
 
         for (let i = 0; i < clauseValues.length; i++) {
             const unified = unifyLists(clauseValues[i], subclauseValues[i], unifier);
-
+            console.log("unifier list",unifier);
             if (!unified) return null;
         }
     }else if (isVariable(resolvedClauseHead) && isList(resolvedSubclauseHead)) {
-        unifier.set(resolvedSubclauseHead,resolvedClauseHead)
+        unifier.set(resolvedClauseHead,resolvedSubclauseHead);//
     } else if (isList(resolvedClauseHead) && isVariable(resolvedSubclauseHead)) {
-        unifier.set(resolvedClauseHead,resolvedSubclauseHead)
-    }else if (isVariable(resolvedClauseHead) || isVariable(resolvedSubclauseHead)) {
-        if (resolvedClauseHead !== resolvedSubclauseHead) {
-            unifier.set(resolvedSubclauseHead,resolvedClauseHead);
+        unifier.set(resolvedSubclauseHead,resolvedClauseHead);//
+    }else if (isVariable(resolvedClauseHead )&& !isVariable(resolvedSubclauseHead )){
+        unifier.set(resolvedClauseHead,resolvedSubclauseHead );//
+        console.log(unifier);
+        console.log("not var ",resolvedSubclauseHead," var ",resolvedClauseHead )
+    } else if (isVariable(resolvedSubclauseHead) && !isVariable(resolvedClauseHead)) {
+
+        unifier.set(resolvedSubclauseHead,resolvedClauseHead);//
+        console.log(unifier);
+        console.log("not var ",resolvedClauseHead," var ", resolvedSubclauseHead)
+    }
+    else if (isVariable(resolvedSubclauseHead) && isVariable(resolvedClauseHead)){
+        let b = false;
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        for (const [key, value] of unifier) {
+            if (areTermsEqual(key, resolvedSubclauseHead)) {
+                b=true;
+            }
         }
-    } else if (resolvedClauseHead.value !== resolvedSubclauseHead.value) {
+        console.log(`[${resolvedSubclauseHead}] ${b}`);
+        if(b){
+
+            unifier.set( resolvedClauseHead,resolvedSubclauseHead);//
+        }else{
+            unifier.set(resolvedSubclauseHead,resolvedClauseHead);//
+        }
+
+    }
+    else if (resolvedClauseHead.value !== resolvedSubclauseHead.value) {
         return null;
     }
+    else{
 
+    }
     return unifier;
 };
 
@@ -204,10 +212,25 @@ const unify = (
         const resolvedClauseArg = resolveTerm(clauseArg, newUnifier);
         const resolvedSubclauseArg = resolveTerm(subclauseArg, newUnifier);
 
-        if (isVariable(resolvedClauseArg)) {
-            newUnifier.set(resolvedSubclauseArg,resolvedClauseArg );
-        } else if (isVariable(resolvedSubclauseArg)) {
-            newUnifier.set( resolvedClauseArg,resolvedSubclauseArg);
+        if (isVariable(resolvedClauseArg )&& !isVariable(resolvedSubclauseArg )){
+            newUnifier.set(resolvedClauseArg ,resolvedSubclauseArg);//
+        } else if (isVariable(resolvedSubclauseArg) && !isVariable(resolvedClauseArg)) {
+            newUnifier.set(resolvedSubclauseArg,resolvedClauseArg);//
+        }
+        else if (isVariable(resolvedSubclauseArg) && isVariable(resolvedClauseArg)){
+            let b = false;
+            // eslint-disable-next-line @typescript-eslint/no-unused-vars
+            for (const [key, value] of newUnifier) {
+                if (areTermsEqual(key, resolvedSubclauseArg)) {
+                    b=true;
+                }
+            }
+            if(b){
+                newUnifier.set( resolvedClauseArg,resolvedSubclauseArg);//
+            }else{
+                newUnifier.set(resolvedSubclauseArg,resolvedClauseArg);//
+            }
+
         } else if (resolvedClauseArg.value !== resolvedSubclauseArg.value) {
             if (
                 isList(resolvedClauseArg) &&
@@ -284,7 +307,7 @@ export const interpret = (
 
 
         if (unifier) {
-
+            console.log(unifier)
             usageCount.set(i, currentCount + 1);
             const updatedObjectives = [
                 ...renamedClause.body.map((subclause) =>
@@ -306,7 +329,7 @@ export const interpret = (
                 clause: renamedClause,
                 unifier,
                 unifierText: Array.from(unifier.entries())
-                    .map(([key, value]) => `${termToString(key)} = ${termToString(value)}`)
+                    .map(([key, value]) => `${termToString(value)} / ${termToString(key)}`)
                     .join(", "),
                 objective: updatedObjectives,
             };
