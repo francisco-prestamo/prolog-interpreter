@@ -4,7 +4,7 @@ import { Parser } from "@/app/api/Prolog/Parser/Parser";
 function parse(text: string): Clause[]{
   const parser = new Parser(text);
 
-  return parser.parse();
+  return parser.parseClauses();
 }
 
 describe('Parser Tests', () => {
@@ -35,7 +35,7 @@ describe('Parser Tests', () => {
     expect(clauses.length).toBe(1);
 
     const clause = clauses[0];
-    console.log(clause.to_string())
+    console.log(clause.to_string_debug())
 
     expect(clause.body.length).toBe(6);
   })

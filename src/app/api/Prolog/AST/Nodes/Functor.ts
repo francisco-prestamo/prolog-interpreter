@@ -1,6 +1,6 @@
 import { ASTNode } from "./ASTNode";
 import { NodeType } from "../NodeTypes";
-import { Token } from "../../Prolog/Lexer/Token";
+import { Token } from "../../Lexer/Token";
 
 export class Functor extends ASTNode {
 
@@ -11,7 +11,11 @@ export class Functor extends ASTNode {
     this.name = this.nameToken.value;
   }
 
-  public to_string(): string {
-    return `${this.name}(${this.args.map(arg => arg.to_string()).join(', ')})`;
+  public to_string_debug(): string {
+    return `${this.name}(${this.args.map(arg => arg.to_string_debug()).join(', ')})`;
+  }
+
+  public copy(alias: string): Functor {
+    return new Functor(this.nameToken, this.args.map(arg => arg.copy(alias)), this.introducedBy);
   }
 }

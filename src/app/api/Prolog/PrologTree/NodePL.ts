@@ -7,7 +7,7 @@ export interface NodePL {
   id: string;
   fatherId?: string;
   clause: Clause;
-  unifier: Map<Atom, Term>;
+  // unifier: Map<Atom, Term>;
   unifierText: string;
   objective: Subclause[];
   processedCut?: boolean;

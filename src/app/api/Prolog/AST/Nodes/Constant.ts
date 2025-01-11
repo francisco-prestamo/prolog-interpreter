@@ -1,6 +1,6 @@
 import { ASTNode } from "./ASTNode";
 import { NodeType } from "../NodeTypes";
-import { Token } from "../../Prolog/Lexer/Token";
+import { Token } from "../../Lexer/Token";
 
 export class Constant extends ASTNode{
   public readonly name: string;
@@ -9,7 +9,11 @@ export class Constant extends ASTNode{
     this.name = this.token.value;
   }
 
-  public to_string(): string {
+  public to_string_debug(): string {
     return this.name;
+  }
+
+  public copy(alias: string): Constant {
+    return new Constant(this.token);
   }
 }

@@ -1,5 +1,5 @@
 export enum NodeType {
-  Atom = "Atom",
+  // Atom = "Atom",
   BinOp = "BinOp",
   Clause = "Clause",
   Constant = "Constant",
@@ -9,8 +9,8 @@ export enum NodeType {
   EmptyList = "EmptyList",
   NumberLiteral = "NumberLiteral",
   StringLiteral = "StringLiteral",
-  Subclause = "Subclause",
-  Term = "Term",
+  // Subclause = "Subclause",
+  // Term = "Term",
   UnOp = "UnOp",
   Variable = "Variable",
   Cut = "Cut"

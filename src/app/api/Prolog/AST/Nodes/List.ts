@@ -9,8 +9,12 @@ export class EmptyList extends ASTNode {
     super(NodeType.EmptyList)
   }
 
-  public to_string(): string {
+  public to_string_debug(): string {
     return '[]';
+  }
+
+  public copy(alias: string): EmptyList {
+    return new EmptyList();
   }
 }
 
@@ -19,7 +23,11 @@ export class NonEmptyList extends ASTNode {
     super(NodeType.NonEmptyList)
   }
 
-  public to_string(): string {
-    return `[${this.head.to_string()} | ${this.tail.to_string()}]`;
+  public to_string_debug(): string {
+    return `[${this.head.to_string_debug()} | ${this.tail.to_string_debug()}]`;
+  }
+
+  public copy(alias: string): NonEmptyList {
+    return new NonEmptyList(this.head.copy(alias) as Term, this.tail.copy(alias));
   }
 }

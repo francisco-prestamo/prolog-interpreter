@@ -8,7 +8,11 @@ export class Clause extends ASTNode {
     super(NodeType.Clause)
   }
 
-  public to_string(): string {
-    return `:-(${this.head.to_string()}, [${(this.body.map(subclause => subclause.to_string())).join(", ")}])`
+  public to_string_debug(): string {
+    return `:-(${this.head.to_string_debug()}, [${(this.body.map(subclause => subclause.to_string_debug())).join(", ")}])`
+  }
+
+  public copy(alias: string): Clause {
+    return new Clause(this.head.copy(alias) as Functor, this.body.map(subclause => subclause.copy(alias)));
   }
 }

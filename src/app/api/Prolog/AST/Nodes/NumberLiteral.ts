@@ -10,7 +10,11 @@ export class NumberLiteral extends ASTNode{
     this.value = Number(this.token.value);
   }
 
-  public to_string(): string {
+  public to_string_debug(): string {
     return String(this.value);
+  }
+
+  public copy(alias: string): NumberLiteral {
+    return new NumberLiteral(this.token);
   }
 }

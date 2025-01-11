@@ -116,7 +116,7 @@ describe('Basic Operator Precedence and Associativity Tests', () => {
 
   it('should parse 1 ^ 2 ^ 3 correctly', () => {
     const tree = parse('1 ^ 2 ^ 3');
-    console.log(tree.to_string());
+    console.log(tree.to_string_debug());
 
     expect(tree.type).toBe(NodeType.BinOp);
     

@@ -6,7 +6,11 @@ export class Cut extends ASTNode {
     super(NodeType.Cut)
   }
 
-  public to_string(): string {
+  public to_string_debug(): string {
     return '!';
+  }
+
+  public copy(alias: string): Cut {
+    return new Cut();
   }
 }

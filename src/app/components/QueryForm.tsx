@@ -2,16 +2,17 @@ import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import {NodePL, Subclause} from "@/app/api/Prolog/Interpreter/clause";
+import { NodePL } from "../api/Prolog/PrologTree/NodePL";
+import { Subclause } from "../api/Prolog/AST/Nodes/Subclause";
 import Tree from "react-d3-tree";
 
 interface TreeNode {
     id: string;
-    unifier: Record<string, string>;
+    // unifier: Record<string, string>;
     unifierText: string;
     clause: string;
     children: TreeNode[];
-    objective: Subclause[];
+    // objective: Subclause[];
 }
 
 interface TreeData {
@@ -31,21 +32,23 @@ export const QueryForm = (): React.ReactElement => {
 
     const transformTreeData = (node: NodePL): TreeNode => {
         const unifierObject: Record<string, string> = {};
-        if (typeof node.unifier === 'object' && node.unifier !== null) {
-            Object.entries(node.unifier).forEach(([key, value]) => {
-                unifierObject[key] =
-                    typeof value === 'object' && value !== null
-                        ? JSON.stringify(value)
-                        : String(value);
-            });
-        }
+        // if (typeof node.unifier === 'object' && node.unifier !== null) {
+        //     Object.entries(node.unifier).forEach(([key, value]) => {
+        //         unifierObject[key] =
+        //             typeof value === 'object' && value !== null
+        //                 ? JSON.stringify(value)
+        //                 : String(value);
+        //     });
+        // }
+
+        // for (const [])
 
         return {
             id: node.id,
-            unifier: unifierObject,
+            // unifier: unifierObject,
             unifierText: node.unifierText,
             clause: node.clause.head.name,
-            objective: node.objective,
+            // objective: node.objective,
             children: Array.isArray(node.children) ? node.children.map(transformTreeData) : [],
         };
     };
