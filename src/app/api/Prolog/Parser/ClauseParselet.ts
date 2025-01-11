@@ -52,7 +52,7 @@ export function extractClause(node: ASTNode): Clause{
   }
 }
 
-function extractSubclauses(node: BinOp): Subclause[]{
+export function extractSubclauses(node: BinOp): Subclause[]{
   if (node.operatorToken.type != TokenType.COMMA && node.type != NodeType.Functor)
     throw new SyntaxError("Expected operator to be functor-like or comma", node.operatorToken);
   if (node.type == NodeType.Functor)

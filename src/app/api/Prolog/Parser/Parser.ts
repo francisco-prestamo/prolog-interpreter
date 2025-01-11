@@ -1,7 +1,9 @@
 import { Clause } from "../AST/Nodes/Clause";
+import { Subclause } from "../AST/Nodes/Subclause";
 import { NodeType } from "../AST/NodeTypes";
 import { Lexer } from "../Lexer/Lexer";
 import { Token, TokenType } from "../Lexer/Token";
+import { extractSubclauses } from "./ClauseParselet";
 import { PrattParser } from "./PrattParser";
 import { SyntaxError } from "./SyntaxError";
 
@@ -30,7 +32,7 @@ export class Parser{
     this.cursor++;
   }
 
-  public parse(): Clause[]{
+  public parseClauses(): Clause[]{
     let clauses: Clause[] = []
 
     while(this.currentToken()!.type != TokenType.EOF){
@@ -40,6 +42,16 @@ export class Parser{
     this.eat(TokenType.EOF);
 
     return clauses;
+  }
+
+  public parseQuery(): Subclause[]{
+    const query = this.expressionParser.parse(this.cursor);
+
+    this.cursor = this.expressionParser.getCursor();
+
+    this.eat(TokenType.DOT);
+
+    return extractSubclauses(query);
   }
 
   private parseClause(): Clause{
