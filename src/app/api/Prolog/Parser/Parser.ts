@@ -1,4 +1,6 @@
+import { BinOp } from "../AST/Nodes/BinOp";
 import { Clause } from "../AST/Nodes/Clause";
+import { Functor } from "../AST/Nodes/Functor";
 import { Subclause } from "../AST/Nodes/Subclause";
 import { NodeType } from "../AST/NodeTypes";
 import { Lexer } from "../Lexer/Lexer";
@@ -49,9 +51,12 @@ export class Parser{
 
     this.cursor = this.expressionParser.getCursor();
 
+    const dotToken = this.currentToken();
     this.eat(TokenType.DOT);
-
-    return extractSubclauses(query);
+    
+    if (query.type == NodeType.Functor) return [query as Functor]
+    else if (query.type == NodeType.BinOp) return extractSubclauses(query as BinOp)
+    throw new SyntaxError('Expected functor or binop', dotToken!);
   }
 
   private parseClause(): Clause{

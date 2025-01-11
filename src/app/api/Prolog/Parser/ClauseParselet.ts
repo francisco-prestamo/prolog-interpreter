@@ -8,21 +8,6 @@ import { Subclause } from "../AST/Nodes/Subclause";
 import { Token, TokenType } from "../Lexer/Token";
 import { SyntaxError } from "./SyntaxError";
 
-const functor_like_operators = new Set<TokenType>();
-functor_like_operators.add(TokenType.IS);
-functor_like_operators.add(TokenType.LITERAL_EQUAL);
-functor_like_operators.add(TokenType.SAME_VALUE_EQUAL);
-functor_like_operators.add(TokenType.UNIFY);
-
-functor_like_operators.add(TokenType.LESS_OR_EQUAL);
-functor_like_operators.add(TokenType.GREATER_OR_EQUAL);
-functor_like_operators.add(TokenType.GREATER_THAN);
-functor_like_operators.add(TokenType.LESS_THAN);
-
-function is_functor(token: Token){
-  return functor_like_operators.has(token.type)
-}
-
 export function extractClause(node: ASTNode): Clause{
   if (node.type == NodeType.BinOp){
     const binOp = node as BinOp;
