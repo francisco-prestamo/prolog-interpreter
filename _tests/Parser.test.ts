@@ -7,7 +7,7 @@ function parse(text: string): Clause[]{
   return parser.parseClauses();
 }
 
-describe('Parser Tests', () => {
+describe('Parser Tests without disjunction', () => {
   it('should parse simple program correctly', () => {
     const clauses = parse(`
       foo(X) :- bar(X).
@@ -35,7 +35,7 @@ describe('Parser Tests', () => {
     expect(clauses.length).toBe(1);
 
     const clause = clauses[0];
-    console.log(clause.to_string_debug())
+    // console.log(clause.to_string_debug())
 
     expect(clause.body.length).toBe(6);
   })
@@ -75,11 +75,46 @@ describe('Parser Tests', () => {
     const clauses = parse(`
       foo(X) :- bar(X), !, baz(X).
     `);
-
     expect(clauses.length).toBe(1);
 
     const clause = clauses[0];
 
     expect(clause.body.length).toBe(3);
   })
+})
+
+describe('Parser Tests with disjunction', () => {
+  it('should parse simple program with disjunction correctly', () => {
+    const clauses = parse(`
+      foo(X) :- bar(X); baz(X).
+    `);
+
+    expect(clauses.length).toBe(2);
+    expect(clauses[0].body.length).toBe(1);
+    expect(clauses[1].body.length).toBe(1);
+  })
+
+  it('should find all possibilities of program with disjunction', () => {
+    const clauses = parse(`
+      foo(X) :- ((a(X) ; b(X)) ; (c(X), d(X))) , (f(X) ; e(X)).  
+    `)
+    expect(clauses.length).toBe(6);
+  })
+
+  it ('should find all possibilities of program with deeply nested disjunction', () => {
+    const clauses = parse(`
+      foo(X) :- ((a(X) ; e(X)) ; ((b(X) , f(X)) ; (c(X) ; d(X)))).
+    `)
+
+    expect(clauses.length).toBe(5);
+  })
+
+  it ('should parse all possibilities of program with deeply nested disjuntion and conjunction', () => {
+    const clauses = parse(`
+      foo(X) :- ((a(X) ; e(X)) ; ((b(X) , f(X)) ; (c(X) ; d(X)))), (g(X) ; h(X)).
+    `)
+    console.log(clauses.map(clause => clause.to_string_debug()));
+
+    expect(clauses.length).toBe(10);
+  });
 })

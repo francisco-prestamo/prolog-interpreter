@@ -12,7 +12,6 @@ import { AssociativityType } from "./AssociativityType";
 import { BinOp } from "../AST/Nodes/BinOp";
 import { UnOp } from "../AST/Nodes/UnOp";
 import LexicalError from "../Lexer/LexicalError";
-import { extractClause } from "./ClauseParselet";
 import { Cut } from "../AST/Nodes/Cut";
 
 
@@ -55,12 +54,21 @@ export class PrattParser {
       1200,
       AssociativityType.xfx,
       (left: ASTNode, operator: Token, operand: ASTNode) => {
-        return extractClause(new BinOp(left, operator, operand));
+        return new BinOp(left, operator, operand);
       }
     )
 
     this.registerInfix(
       [TokenType.COMMA],
+      1000,
+      AssociativityType.yfx,
+      (left, operator, operand) => {
+        return new BinOp(left, operator, operand);
+      }
+    );
+
+    this.registerInfix(
+      [TokenType.SEMICOLON],
       1100,
       AssociativityType.yfx,
       (left, operator, operand) => {

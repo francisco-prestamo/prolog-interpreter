@@ -7,7 +7,7 @@ export interface Token{
 
 export enum TokenType {
   COMMA = ",",
-  // semicolon = ";",
+  SEMICOLON = ";",
   IS = "is",
   IMPLIES = ":-",
   LESS_THAN = "<",

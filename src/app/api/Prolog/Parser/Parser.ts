@@ -5,7 +5,7 @@ import { Subclause } from "../AST/Nodes/Subclause";
 import { NodeType } from "../AST/NodeTypes";
 import { Lexer } from "../Lexer/Lexer";
 import { Token, TokenType } from "../Lexer/Token";
-import { extractSubclauses } from "./ClauseParselet";
+import { extractClausePossibilities, extractSubclauses } from "./ClauseBuilder";
 import { PrattParser } from "./PrattParser";
 import { SyntaxError } from "./SyntaxError";
 
@@ -38,7 +38,7 @@ export class Parser{
     let clauses: Clause[] = []
 
     while(this.currentToken()!.type != TokenType.EOF){
-      clauses.push(this.parseClause());
+      clauses.push(...this.parseClauseWithPossibilities());
       this.eat(TokenType.DOT);
     }
     this.eat(TokenType.EOF);
@@ -46,7 +46,7 @@ export class Parser{
     return clauses;
   }
 
-  public parseQuery(): Subclause[]{
+  public parseQuery(): Subclause[][]{
     const query = this.expressionParser.parse(this.cursor);
 
     this.cursor = this.expressionParser.getCursor();
@@ -54,20 +54,16 @@ export class Parser{
     const dotToken = this.currentToken();
     this.eat(TokenType.DOT);
     
-    if (query.type == NodeType.Functor) return [query as Functor]
+    if (query.type == NodeType.Functor) return [[query as Functor]]
     else if (query.type == NodeType.BinOp) return extractSubclauses(query as BinOp)
     throw new SyntaxError('Expected functor or binop', dotToken!);
   }
 
-  private parseClause(): Clause{
-    const node = this.expressionParser.parse(this.cursor);
+  private parseClauseWithPossibilities(): Clause[]{
+    const nodes = this.expressionParser.parse(this.cursor);
 
     this.cursor = this.expressionParser.getCursor();
 
-    if (node.type != NodeType.Clause){
-      throw new SyntaxError('Expected clause', this.currentToken()!);
-    }
-
-    return node as Clause;
+    return extractClausePossibilities(nodes);
   }
 }

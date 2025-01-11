@@ -35,10 +35,10 @@ export class Lexer{
           this.addToken(TokenType.COMMA, TokenType.COMMA);
           this.advance();
           break;
-        // case ";":
-        //   this.addToken(TokenType.semicolon, TokenType.semicolon);
-        //   this.advance();
-        //   break;
+        case ";":
+          this.addToken(TokenType.SEMICOLON, TokenType.SEMICOLON);
+          this.advance();
+          break;
         case "+":
           this.addToken(TokenType.PLUS, TokenType.PLUS);
           this.advance();

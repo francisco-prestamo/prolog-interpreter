@@ -164,16 +164,22 @@ describe('Basic Operator Precedence and Associativity Tests', () => {
 describe('Correct Clause Parsing', () => {
   it('should parse a(c) :- b(c), d(c), h(c). correctly', () => {
     const tree = parse('a(c) :- b(c), d(c), h(c)')
+    console.log(tree.to_string_debug())
 
-    expect(tree.type).toBe(NodeType.Clause);
+    expect(tree.type).toBe(NodeType.BinOp);
     
-    const clause = tree as Clause;
+    const binop = tree as BinOp;
 
-    expect(clause.head.type).toBe(NodeType.Functor);
-    expect(clause.body.length).toBe(3);
-    expect(clause.body[0].type).toBe(NodeType.Functor);
-    expect(clause.body[1].type).toBe(NodeType.Functor);
-    expect(clause.body[2].type).toBe(NodeType.Functor);
+    expect(binop.left.type).toBe(NodeType.Functor);
+    expect(binop.right.type).toBe(NodeType.BinOp);
+
+    const body = binop.right as BinOp;
+    expect(body.left.type).toBe(NodeType.BinOp);
+    expect(body.right.type).toBe(NodeType.Functor);
+
+    const first = body.left as BinOp;
+    expect(first.left.type).toBe(NodeType.Functor);
+    expect(first.right.type).toBe(NodeType.Functor);
   })
 })
 
