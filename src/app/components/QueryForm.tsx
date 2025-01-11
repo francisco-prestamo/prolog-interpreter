@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import {NodePL, Subclause} from "@/app/api/interpreter/clause";
+import {NodePL, Subclause} from "@/app/api/Prolog/Interpreter/clause";
 import Tree from "react-d3-tree";
 
 interface TreeNode {

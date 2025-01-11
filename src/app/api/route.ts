@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { Clause, Subclause, Term, interpret, NodePL } from "./clause";
+import { Clause, Subclause, Term, interpret, NodePL } from "./Prolog/Interpreter/clause";
 
 let storedClauses: Clause[] = [];
 
