@@ -79,9 +79,9 @@ export class PrattParser {
     this.registerInfix(
       [
         TokenType.IS,
-        TokenType.GREATER_THAN,
+        TokenType.GREATER,
         TokenType.GREATER_OR_EQUAL,
-        TokenType.LESS_THAN,
+        TokenType.LESS,
         TokenType.LESS_OR_EQUAL,
         TokenType.UNIFY,
         TokenType.SAME_VALUE_EQUAL,
@@ -286,8 +286,9 @@ export class PrattParser {
       return new Constant(nameToken);
     }
     if (this.currentToken().type == TokenType.BANG){
+      const bangToken = this.currentToken()
       this.consume();
-      return new Cut();
+      return new Cut(bangToken);
     }
     return this.parseTerm();
   }
@@ -324,7 +325,7 @@ export class PrattParser {
   }
 
   private parseFunctor(nameToken: Token): Functor{
-    let args: ASTNode[] = []
+    const args: ASTNode[] = []
     args.push(this.parseTerm());
     while (this.currentToken().type != TokenType.RPAR){
       this.eat(TokenType.COMMA);
@@ -345,7 +346,7 @@ export class PrattParser {
     }
 
     // non empty list
-    let head_terms: Term[] = [];
+    const head_terms: Term[] = [];
     let tail: Term | undefined = undefined;
 
     head_terms.push(this.parseTerm());

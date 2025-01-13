@@ -14,7 +14,11 @@ export class StringLiteral extends ASTNode{
     return `"${this.value}"`;
   }
 
-  public copy(alias: string): StringLiteral {
+  public to_string_display(): string {
+    return `"${this.value}"`;
+  }
+
+  public copy(): StringLiteral {
     return new StringLiteral(this.token);
   }
 }

@@ -35,7 +35,7 @@ export class Parser{
   }
 
   public parseClauses(): Clause[]{
-    let clauses: Clause[] = []
+    const clauses: Clause[] = []
 
     while(this.currentToken()!.type != TokenType.EOF){
       clauses.push(...this.parseClauseWithPossibilities());

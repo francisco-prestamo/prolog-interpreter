@@ -1,7 +1,13 @@
 import { Clause } from "./AST/Nodes/Clause";
-import { Subclause } from "./AST/Nodes/Subclause";
+import { Interpreter } from "./Interpreter/Interpreter";
+import { Unifier } from "./Interpreter/Unifier";
 import { Parser } from "./Parser/Parser";
 import { NodePL } from "./PrologTree/NodePL";
+
+export interface ReturnType {
+  trees: NodePL[];
+  solutions: Unifier[];
+}
 
 export interface SolveOptions{
   depth?: number;
@@ -9,15 +15,9 @@ export interface SolveOptions{
 }
 
 export class Prolog{
-  public get tree(): NodePL | undefined{
-    return this._tree
-  }
-
-  private _tree?: NodePL = undefined;
-
   constructor(private readonly bodyText: string, private readonly queryText: string){}
 
-  public solve(options: SolveOptions = {depth: undefined, solutions: undefined}){
+  public solve(options: SolveOptions = {depth: undefined, solutions: undefined}): ReturnType{
     let clauses: Clause[];
     if (this.bodyText.trim() == '') clauses = [];
     else {
@@ -27,5 +27,9 @@ export class Prolog{
 
     const queryParser = new Parser(this.queryText);
     const query = queryParser.parseQuery();
+
+    const interpreter = new Interpreter(clauses, query);
+
+    return interpreter.interpret(options);
   }
 }

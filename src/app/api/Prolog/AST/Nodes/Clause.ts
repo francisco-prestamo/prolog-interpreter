@@ -2,9 +2,10 @@ import { ASTNode } from "./ASTNode";
 import { Functor } from "./Functor";
 import { NodeType } from "../NodeTypes";
 import { Subclause } from "./Subclause";
+import { Token } from "../../Lexer/Token";
 
 export class Clause extends ASTNode {
-  constructor(public readonly head: Functor, public readonly body: Subclause[]) {
+  constructor(public readonly head: Functor, public readonly impliesToken: Token, public readonly body: Subclause[]) {
     super(NodeType.Clause)
   }
 
@@ -12,7 +13,12 @@ export class Clause extends ASTNode {
     return `:-(${this.head.to_string_debug()}, [${(this.body.map(subclause => subclause.to_string_debug())).join(", ")}])`
   }
 
-  public copy(alias: string): Clause {
-    return new Clause(this.head.copy(alias) as Functor, this.body.map(subclause => subclause.copy(alias)));
+  public to_string_display(): string {
+    return `${this.head.to_string_display()} :- ${this.body.map(subclause => subclause.to_string_display()).join(", ")}.`
+  
+  }
+
+  public copy(identifier?: string, introducedBy?: string): Clause {
+    return new Clause(this.head.copy(identifier, introducedBy) as Functor, this.impliesToken, this.body.map(subclause => subclause.copy(identifier, introducedBy)));
   }
 }

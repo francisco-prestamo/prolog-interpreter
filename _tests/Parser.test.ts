@@ -111,10 +111,10 @@ describe('Parser Tests with disjunction', () => {
 
   it ('should parse all possibilities of program with deeply nested disjuntion and conjunction', () => {
     const clauses = parse(`
-      foo(X) :- ((a(X) ; e(X)) ; ((b(X) , f(X)) ; (c(X) ; d(X)))), (g(X) ; h(X)).
+      foo(X) :- ((a(X) ; e(X)) ; ((b(X) , f(X)) ; (c(X) ; d(X)))), (g(X) ; h(X)), ((i(X); j(X)), k(X)).
     `)
-    console.log(clauses.map(clause => clause.to_string_debug()));
+    // console.log(clauses.map(clause => clause.to_string_debug()));
 
-    expect(clauses.length).toBe(10);
+    expect(clauses.length).toBe(20);
   });
 })

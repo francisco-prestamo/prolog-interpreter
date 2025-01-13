@@ -15,7 +15,14 @@ export class Variable extends ASTNode{
     return this.name;
   }
 
-  public copy(alias: string): Variable {
-    return new Variable(this.token, this.name + ALIAS_SEPARATOR + alias);
+  public copy(identifier?: string): Variable {
+    if (identifier != undefined)
+      return new Variable(this.token, this.name + ALIAS_SEPARATOR + identifier);
+    else
+      return new Variable(this.token);
+  }
+
+  public to_string_display(): string {
+    return this.name;
   }
 }

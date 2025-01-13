@@ -3,14 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { NodePL } from "../api/Prolog/PrologTree/NodePL";
-import { Subclause } from "../api/Prolog/AST/Nodes/Subclause";
 import Tree from "react-d3-tree";
 
 interface TreeNode {
     id: string;
     // unifier: Record<string, string>;
     unifierText: string;
-    clause: string;
+    appliedClause: string | null;
+    objective: string;
     children: TreeNode[];
     // objective: Subclause[];
 }
@@ -31,24 +31,24 @@ export const QueryForm = (): React.ReactElement => {
     const [error, setError] = useState<string | null>(null);
 
     const transformTreeData = (node: NodePL): TreeNode => {
-        const unifierObject: Record<string, string> = {};
-        // if (typeof node.unifier === 'object' && node.unifier !== null) {
-        //     Object.entries(node.unifier).forEach(([key, value]) => {
-        //         unifierObject[key] =
-        //             typeof value === 'object' && value !== null
-        //                 ? JSON.stringify(value)
-        //                 : String(value);
-        //     });
-        // }
+        // const unifierObject: Record<string, string> = {};
+        // // if (typeof node.unifier === 'object' && node.unifier !== null) {
+        // //     Object.entries(node.unifier).forEach(([key, value]) => {
+        // //         unifierObject[key] =
+        // //             typeof value === 'object' && value !== null
+        // //                 ? JSON.stringify(value)
+        // //                 : String(value);
+        // //     });
+        // // }
 
-        // for (const [])
+        // // for (const [])
 
         return {
             id: node.id,
             // unifier: unifierObject,
             unifierText: node.unifierText,
-            clause: node.clause.head.name,
-            // objective: node.objective,
+            appliedClause: node.appliedClause,
+            objective: node.objective,
             children: Array.isArray(node.children) ? node.children.map(transformTreeData) : [],
         };
     };
@@ -62,7 +62,7 @@ export const QueryForm = (): React.ReactElement => {
                 throw new Error("Please enter both clauses and query");
             }
 
-            const response = await fetch("/api/interpreter", {
+            const response = await fetch("/api", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ clauses, query }),
@@ -109,8 +109,10 @@ export const QueryForm = (): React.ReactElement => {
                 return acc;
             }, {} as Record<string, string>);
 
+        if (node.appliedClause) unifierAttributes.APPLIED_CLAUSE = node.appliedClause;
+
         return {
-            name: node.clause,
+            name: node.objective,
             attributes: unifierAttributes,
             children: node.children.map(renderTree),
         };

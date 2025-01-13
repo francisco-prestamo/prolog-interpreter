@@ -1,17 +1,34 @@
 import { ASTNode } from "./ASTNode";
 import { NodeType } from "../NodeTypes";
 import { Token } from "../../Lexer/Token";
+import { isLiteralValue, LiteralValue } from "../../Interpreter/Evaluator";
 
 export class UnOp extends ASTNode{
-  constructor(public readonly operatorToken: Token, public readonly operand: ASTNode) {
+  constructor(public readonly operatorToken: Token, public readonly operand: ASTNode | LiteralValue) {
     super(NodeType.UnOp)
   }
 
   public to_string_debug(): string {
-    return `${this.operatorToken.value}(${this.operand.to_string_debug()})`;
+    if (isLiteralValue(this.operand)) {
+      return `${this.operatorToken.value}(${this.operand})`;
+    }
+    const operand = this.operand as ASTNode;
+    return `${this.operatorToken.value}(${operand.to_string_debug()})`;
   }
 
-  public copy(alias: string): UnOp {
-    return new UnOp(this.operatorToken, this.operand.copy(alias));
+  public copy(identifier?: string, introducedBy?: string): UnOp {
+    if (isLiteralValue(this.operand)) {
+      return new UnOp(this.operatorToken, this.operand);
+    }
+    const operand = this.operand as ASTNode;
+    return new UnOp(this.operatorToken, operand.copy(identifier, introducedBy));
+  }
+
+  public to_string_display(): string {
+    if (isLiteralValue(this.operand)) {
+      return `${this.operatorToken.value}${this.operand}`;
+    }
+    const operand = this.operand as ASTNode;
+    return `${this.operatorToken.value}${operand.to_string_display()}`;
   }
 }

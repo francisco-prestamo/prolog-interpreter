@@ -6,29 +6,116 @@ import { Variable } from "../AST/Nodes/Variable";
 import { Constant } from "../AST/Nodes/Constant";
 import { Cut } from "../AST/Nodes/Cut";
 import { Functor } from "../AST/Nodes/Functor";
-import { EmptyList, List, NonEmptyList } from "../AST/Nodes/List";
+import { EmptyList, NonEmptyList } from "../AST/Nodes/List";
 import { NumberLiteral } from "../AST/Nodes/NumberLiteral";
 import { StringLiteral } from "../AST/Nodes/StringLiteral";
-import { Term } from "../AST/Nodes/Term";
 import { UnOp } from "../AST/Nodes/UnOp";
-import { resolve } from "./Resolver";
+import { RecursiveTypeError, resolve } from "./Resolver";
 import { Clause } from "../AST/Nodes/Clause";
+import { isLiteralValue, LiteralValue } from "./LiteralValue";
+import { DSU } from "../Utils/dsu";
 
 
-export function unify(nodeA: ASTNode, nodeB: ASTNode): Unifier | null {
-  const unifierBuilder = new UnifierBuilder(nodeA, nodeB);
+/**
+ * @returns {Unifier | null} The unifier if the nodes can be unified, null otherwise
+ */
+export function unify(nodeA: ASTNode | LiteralValue, nodeB: ASTNode | LiteralValue): Unifier | null {
+  let unifierBuilder: UnifierBuilder;
+  
+  try {
+    unifierBuilder = new UnifierBuilder(nodeA, nodeB);
+  }
+  catch (error){
+    if (error instanceof RecursiveTypeError){
+      return null;
+    }
+    else{
+      throw error;
+    }
+  }
+
   if (!unifierBuilder.could_unify){
     return null;
   }
   return unifierBuilder.unifier;
 }
 
-class Unifier {
-  constructor(private readonly mapping: Map<string, ASTNode>){
+export function emptyUnifier(): Unifier{
+  return new Unifier();
+}
+
+type VariableClass = DSU<string>;
+export class Unifier {
+  private variableClasses: VariableClass = new DSU<string>();
+  private lessPrecedenceVariableOfClass: Map<string, string> = new Map<string, string>();
+  private assignments = new Map<string, ASTNode>();
+
+  constructor(){
   }
 
-  public apply(node: ASTNode): ASTNode {
-    return resolve(node, this.mapping);
+  public apply(node: ASTNode): ASTNode | LiteralValue {
+    return resolve(node, this);
+  }
+
+  public has(variableName: string): boolean {
+    return this.variableClasses.hasElement(variableName);
+  }
+
+  public getResolved(name: string): ASTNode | LiteralValue | string | null {
+    if (!this.variableClasses.hasElement(name)){
+      return null;
+    }
+    const variableClass = this.variableClasses.find(name);
+
+    if (!this.assignments.has(variableClass)){
+      return this.lessPrecedenceVariableOfClass.get(variableClass)!;
+    }
+
+    return this.assignments.get(variableClass)!;
+  }
+
+  public compose(other: Unifier): Unifier{
+    // create new mapping for resulting unifier
+    const newMapping = new Map<string, ASTNode | LiteralValue>();
+    
+    for (const [key, value] of this.mapping){
+      newMapping.set(key, value)
+    }
+
+    // after resolving variables in this unifier with resolutions of the other,
+    // we must add the variables that are not resolved in this unifier and are
+    // in the other to the resulting unifier, this set facilitates that
+    const variablesInThisMapping = new Set<string>();
+
+    for (const key in newMapping){
+      const resolved = newMapping.get(key)!
+      if (!isLiteralValue(resolved) && resolved.type == NodeType.Variable){
+        const resolvedVariable = resolved as Variable
+        variablesInThisMapping.add(resolvedVariable.name);
+
+        newMapping.set(key, other.apply(resolved));
+      }
+    }
+
+    for (const key in other.mapping){
+      if (variablesInThisMapping.has(key)) continue;
+      newMapping.set(key, other.mapping.get(key)!);
+    }
+
+    return new Unifier(newMapping);
+  }
+
+  public restrict(variables: Set<string>): Unifier{
+    console.log("restricting unifier " + this.to_string() + " with " + Array.from(variables).join(", "));
+    const newMapping = new Map<string, ASTNode | LiteralValue>();
+
+    for (const [key, value] of this.mapping){
+      if (variables.has(key)){
+        newMapping.set(key, value);
+      }
+    }
+
+    return new Unifier(newMapping);
   }
 
   public is_empty() {
@@ -36,30 +123,86 @@ class Unifier {
   }
 
   public to_string(): string {
-    let str = '{ ';
+    let str = '';
     for (const [key, value] of this.mapping){
-      str += `${key} -> ${value.to_string_debug()}, `;
+      const valueRepresentation = isLiteralValue(value) ? value : value.to_string_debug();
+      str += `${key}=${valueRepresentation}, `;
     }
     str = str.slice(0, -2);
-    str += ' }';
+    str += '';
     return str;
   }
 }
 
 class UnifierBuilder extends ParallelASTVisitor<void> {
-  public mapping = new Map<string, ASTNode>();
+  public mapping = new Map<string, ASTNode | LiteralValue>();
   public could_unify: boolean;
   public unifier: Unifier | null;
 
-  constructor(nodeA: ASTNode, nodeB: ASTNode){
+  constructor(nodeA: ASTNode | LiteralValue, nodeB: ASTNode | LiteralValue){
     super();
     this.could_unify = true;
     this.unify(nodeA, nodeB)
     this.unifier = (this.could_unify) ? new Unifier(this.mapping) : null;
   }
 
-  private unify(nodeA: ASTNode, nodeB: ASTNode){
-    return this.visit(nodeA, nodeB);
+  private unify(nodeA: ASTNode | LiteralValue, nodeB: ASTNode | LiteralValue){
+    if (isLiteralValue(nodeA)){
+      this.visitLiteralValue(nodeA, nodeB);
+      return;
+    }
+    if (isLiteralValue(nodeB)){
+      this.visitLiteralValue(nodeB, nodeA);
+      return;
+    }
+    this.visit(nodeA, nodeB);
+
+
+  }
+
+  visitLiteralValue(a: LiteralValue, b: ASTNode | LiteralValue): void {
+    if (isLiteralValue(b)){
+      if (a != b){
+        this.could_unify = false;
+      }
+      return;
+    }
+
+    if (b.type == NodeType.Variable){
+      const variable_b = b as Variable;
+      const resolved = resolve(variable_b, this.mapping);
+
+      if (isLiteralValue(resolved)){
+        if (a != resolved){
+          this.could_unify = false;
+        }
+        return;
+      }
+
+      switch(resolved.type){
+        case NodeType.Variable:
+          const variable_resolved = resolved as Variable;
+          this.unify(a, variable_resolved);
+          return;
+        case NodeType.NumberLiteral:
+          const numberliteral_resolved = resolved as NumberLiteral;
+          if (a != numberliteral_resolved.value){
+            this.could_unify = false;
+          }
+          return;
+        case NodeType.StringLiteral:
+          const stringliteral_resolved = resolved as StringLiteral;
+          if (a != stringliteral_resolved.value){
+            this.could_unify = false;
+          }
+          return;
+        default:
+          this.could_unify = false;
+          return;
+      }
+
+
+    }
   }
 
   visitBinOp(a: BinOp, b: ASTNode): void {
@@ -86,7 +229,7 @@ class UnifierBuilder extends ParallelASTVisitor<void> {
     }
   }
 
-  visitClause(a: Clause, b: ASTNode): void {
+  visitClause(_a: Clause, _b: ASTNode): void {
     this.could_unify = false;
   }
 
@@ -112,11 +255,13 @@ class UnifierBuilder extends ParallelASTVisitor<void> {
     }
   }
 
-  visitCut(a: Cut, b: ASTNode): void {
+  visitCut(_a: Cut, _b: ASTNode): void {
     this.could_unify = false;
   }
 
   visitEmptyList(a: EmptyList, b: ASTNode): void {
+    // console.log("Unifying empty list " + a.to_string_debug() + " with " + b.to_string_debug());
+
     switch(b.type){
       case NodeType.EmptyList:
         return;
@@ -160,6 +305,8 @@ class UnifierBuilder extends ParallelASTVisitor<void> {
   }
 
   visitNonEmptyList(a: NonEmptyList, b: ASTNode): void {
+    // console.log("Unifying nonEmpty list " + a.to_string_debug() + " with " + b.to_string_debug());
+  
     switch(b.type){
       case NodeType.NonEmptyList:
         const nonemptylist_b = b as NonEmptyList;
@@ -181,6 +328,7 @@ class UnifierBuilder extends ParallelASTVisitor<void> {
   }
 
   visitNumberLiteral(a: NumberLiteral, b: ASTNode): void {
+    // console.log("Unifying number literal " + a.to_string_debug() + " with " + b.to_string_debug());
     switch(b.type){
       case NodeType.NumberLiteral:
         const numberliteral_b = b as NumberLiteral;
@@ -192,10 +340,25 @@ class UnifierBuilder extends ParallelASTVisitor<void> {
       
       case NodeType.Variable:
         const variable_b = b as Variable;
-        this.unify(resolve(variable_b, this.mapping), a);
-        this.mapping.set(variable_b.name, resolve(variable_b, this.mapping));
-        return;
-      
+        const resolved = resolve(variable_b, this.mapping);
+        if (isLiteralValue(resolved)){
+          if (a.value != resolved){
+            this.could_unify = false;
+          }
+          return;
+        }
+        if (resolved.type == NodeType.Variable){
+          this.mapping.set((resolved as Variable).name, a);
+          return;
+        }
+        if (resolved.type == NodeType.NumberLiteral){
+          if (a.value != (resolved as NumberLiteral).value){
+            this.could_unify = false;
+          }
+          return;
+        }
+        this.could_unify = false;
+        return;      
       default:
         this.could_unify = false;
         return;
@@ -214,10 +377,25 @@ class UnifierBuilder extends ParallelASTVisitor<void> {
       
       case NodeType.Variable:
         const variable_b = b as Variable;
-        this.unify(resolve(variable_b, this.mapping), a);
-        this.mapping.set(variable_b.name, resolve(variable_b, this.mapping));
+        const resolved = resolve(variable_b, this.mapping);
+        if (isLiteralValue(resolved)){
+          if (a.value != resolved){
+            this.could_unify = false;
+          }
+          return;
+        }
+        if (resolved.type == NodeType.Variable){
+          this.mapping.set((resolved as Variable).name, a);
+          return;
+        }
+        if (resolved.type == NodeType.StringLiteral){
+          if (a.value != (resolved as StringLiteral).value){
+            this.could_unify = false;
+          }
+          return;
+        }
+        this.could_unify = false;
         return;
-      
       default:
         this.could_unify = false;
         return;
@@ -248,6 +426,7 @@ class UnifierBuilder extends ParallelASTVisitor<void> {
   }
 
   visitVariable(a: Variable, b: ASTNode): void {
+    // console.log("Unifying variable " + a.to_string_debug() + " with " + b.to_string_debug())
     if (this.mapping.has(a.name)){
       this.unify(resolve(a, this.mapping), b);
       return;

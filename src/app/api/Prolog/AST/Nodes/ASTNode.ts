@@ -7,6 +7,7 @@ export abstract class ASTNode {
   }
 
   public abstract to_string_debug(): string;
+  public abstract to_string_display(): string;
 
-  public abstract copy(alias: string): ASTNode;
+  public abstract copy(identifier?: string, introducedBy?: string): ASTNode;
 }

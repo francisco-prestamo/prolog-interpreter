@@ -14,7 +14,11 @@ export class NumberLiteral extends ASTNode{
     return String(this.value);
   }
 
-  public copy(alias: string): NumberLiteral {
+  public to_string_display(): string {
+    return String(this.value);
+  }
+
+  public copy(): NumberLiteral {
     return new NumberLiteral(this.token);
   }
 }

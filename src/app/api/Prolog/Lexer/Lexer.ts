@@ -68,7 +68,7 @@ export class Lexer{
           this.advance();
           break;
         case "<":
-          this.addToken(TokenType.LESS_THAN, TokenType.LESS_THAN);
+          this.addToken(TokenType.LESS, TokenType.LESS);
           this.advance();
           break;
         case ">":
@@ -77,7 +77,7 @@ export class Lexer{
             this.advance();
           }
           else{
-            this.addToken(TokenType.GREATER_THAN, TokenType.GREATER_THAN);
+            this.addToken(TokenType.GREATER, TokenType.GREATER);
           }
           this.advance();
           break;

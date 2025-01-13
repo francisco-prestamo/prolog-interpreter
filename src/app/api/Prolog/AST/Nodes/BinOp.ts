@@ -1,21 +1,33 @@
 import { Token } from "../../Lexer/Token";
 import { ASTNode } from "./ASTNode";
 import { NodeType } from "../NodeTypes";
+import { isLiteralValue, LiteralValue } from "../../Interpreter/Evaluator";
 
 export class BinOp extends ASTNode {
   constructor(
-    public readonly left: ASTNode,
+    public readonly left: ASTNode | LiteralValue,
     public readonly operatorToken: Token,
-    public readonly right: ASTNode
+    public readonly right: ASTNode | LiteralValue
   ) {
     super(NodeType.BinOp);
   }
 
   public to_string_debug(): string {
-    return `${this.operatorToken.value}(${this.left.to_string_debug()}, ${this.right.to_string_debug()})`;
+    const leftRepresentation = isLiteralValue(this.left) ? this.left : (this.left as ASTNode).to_string_debug();
+    const rightRepresentation = isLiteralValue(this.right) ? this.right : (this.right as ASTNode).to_string_debug();
+    return `${this.operatorToken.value}(${leftRepresentation}, ${rightRepresentation})`;
   }
 
-  public copy(alias: string): BinOp {
-    return new BinOp(this.left.copy(alias), this.operatorToken, this.right.copy(alias));
+  public to_string_display(): string {
+    const leftRepresentation = isLiteralValue(this.left) ? this.left : (this.left as ASTNode).to_string_display();
+    const rightRepresentation = isLiteralValue(this.right) ? this.right : (this.right as ASTNode).to_string_display();
+    return `${leftRepresentation} ${this.operatorToken.value} ${rightRepresentation}`;
+  }
+
+  public copy(identifier?: string, introducedBy?: string): BinOp {
+    const left = isLiteralValue(this.left) ? this.left : (this.left as ASTNode).copy(identifier, introducedBy);
+    const right = isLiteralValue(this.right) ? this.right : (this.right as ASTNode).copy(identifier, introducedBy);
+
+    return new BinOp(left, this.operatorToken, right);
   }
 }

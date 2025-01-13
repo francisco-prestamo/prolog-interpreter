@@ -5,8 +5,9 @@ import { Cut } from "../AST/Nodes/Cut";
 import { Functor } from "../AST/Nodes/Functor";
 import { NodeType } from "../AST/NodeTypes";
 import { Subclause } from "../AST/Nodes/Subclause";
-import { Token, TokenType } from "../Lexer/Token";
+import { TokenType } from "../Lexer/Token";
 import { SyntaxError } from "./SyntaxError";
+import { isLiteralValue, LiteralValue } from "../Interpreter/Evaluator";
 
 export function extractClausePossibilities(node: ASTNode): Clause[]{
   if (node.type == NodeType.BinOp){
@@ -15,21 +16,30 @@ export function extractClausePossibilities(node: ASTNode): Clause[]{
     if (binOp.operatorToken.type != TokenType.IMPLIES)
       throw new SyntaxError(`Expected outermost operator to be ${TokenType.IMPLIES}`,binOp.operatorToken);
 
+    if (isLiteralValue(binOp.left)){
+      throw Error("Unexpected Literal");
+    }
     if (binOp.left.type != NodeType.Functor)
       throw new SyntaxError("Expected left side of clause to be a functor", binOp.operatorToken);
 
+    if (isLiteralValue(binOp.right)){
+      throw Error("Unexpected Literal");
+    }
     const possibilities = extractSubclauses(binOp.right);
-    return possibilities.map(pos => new Clause(binOp.left as Functor, pos));
+    return possibilities.map(pos => new Clause(binOp.left as Functor, binOp.operatorToken, pos));
   }
   else if (node.type == NodeType.Functor){
-    return [new Clause(node as Functor, [])];
+    return [new Clause(node as Functor, (node as Functor).nameToken, [])];
   }
   else {
     throw new SyntaxError("Expected clause to be a functor or a rule", null);
   }
 }
 
-export function extractSubclauses(node: ASTNode): Subclause[][]{
+export function extractSubclauses(node: ASTNode | LiteralValue): Subclause[][]{
+  if (isLiteralValue(node)){
+    throw new Error("Unexpected Literal");
+  }
   // we want functors, cuts, or conjunctions or disjunctions of functors
   
   switch(node.type){

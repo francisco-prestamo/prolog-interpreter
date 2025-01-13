@@ -13,7 +13,11 @@ export class Constant extends ASTNode{
     return this.name;
   }
 
-  public copy(alias: string): Constant {
+  public to_string_display(): string {
+    return this.name;
+  }
+
+  public copy(): Constant {
     return new Constant(this.token);
   }
 }
