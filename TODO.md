@@ -4,6 +4,8 @@
 
 - mapping {X$... -> X, X -> 1}, when restricted to {X} gives {}, because only left side of mapping is considered
   - we could create VariableMap, which are fully connected graphs, and then bind those to nodes
+- Add builtin functor handling in interpreter
+- Further separate elements in different files in interpreter (unifier from unifier builder from unify() for example)
 
 ## Done
 
