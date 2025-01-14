@@ -4,7 +4,8 @@ import { NodeType } from "@/app/api/Prolog/AST/NodeTypes";
 import { BinOp } from "@/app/api/Prolog/AST/Nodes/BinOp";
 import { Clause } from "@/app/api/Prolog/AST/Nodes/Clause";
 import { EmptyList, NonEmptyList } from "@/app/api/Prolog/AST/Nodes/List";
-import { isLiteralValue } from "@/app/api/Prolog/Interpreter/Evaluator";
+import { isLiteralValue } from "@/app/api/Prolog/Interpreter/LiteralValue";
+import { Functor } from "@/app/api/Prolog/AST/Nodes/Functor";
 
 function getParser(text: string){
   const lexer = new Lexer(text);
@@ -56,6 +57,7 @@ describe('Basic Operator Precedence and Associativity Tests', () => {
 
   it('should parse 2 * 2 + 3 correctly', () => {
     const tree = parse('2 * 2 + 3');
+    // console.log(tree.to_string_debug());
 
     expect(tree.type).toBe(NodeType.BinOp);
     
@@ -163,7 +165,7 @@ describe('Basic Operator Precedence and Associativity Tests', () => {
 
   it('should parse 1 ^ 2 ^ 3 correctly', () => {
     const tree = parse('1 ^ 2 ^ 3');
-    console.log(tree.to_string_debug());
+    // console.log(tree.to_string_debug());
 
     expect(tree.type).toBe(NodeType.BinOp);
     
@@ -228,7 +230,7 @@ describe('Basic Operator Precedence and Associativity Tests', () => {
 describe('Correct Clause Parsing', () => {
   it('should parse a(c) :- b(c), d(c), h(c). correctly', () => {
     const tree = parse('a(c) :- b(c), d(c), h(c)')
-    console.log(tree.to_string_debug())
+    // console.log(tree.to_string_debug())
 
     expect(tree.type).toBe(NodeType.BinOp);
     
@@ -282,4 +284,65 @@ describe('Term Parsing', () => {
     expect(t3A.head.type).toBe(NodeType.NumberLiteral);
     expect(t3A.tail.type).toBe(NodeType.Variable);    
   })
+
+  it('should parse a :- b, c correctly', () => {
+    const node = parse('a :- b, c');
+
+    expect(node.type).toBe(NodeType.BinOp);
+    const binop = node as BinOp;
+
+    if (isLiteralValue(binop.left) || isLiteralValue(binop.right)){
+      throw new Error('Unexpected literals');
+    }
+    expect(binop.left.type).toBe(NodeType.Constant);
+    expect(binop.right.type).toBe(NodeType.BinOp);
+
+    const body = binop.right as BinOp;
+    if (isLiteralValue(body.left) || isLiteralValue(body.right)){
+      throw new Error('Unexpected literals');
+    }
+    expect(body.left.type).toBe(NodeType.Constant);
+    expect(body.right.type).toBe(NodeType.Constant);
+  })
+
+  it('should parse a :- a is 3, b is 4 correctly', () => {
+    const node = parse('a :- a is 3, b is 4');
+    console.log(node.to_string_debug())
+
+    expect(node.type).toBe(NodeType.BinOp);
+    const binop = node as BinOp;
+
+    if (isLiteralValue(binop.left) || isLiteralValue(binop.right)){
+      throw new Error('Unexpected literals');
+    }
+    expect(binop.left.type).toBe(NodeType.Constant);
+    expect(binop.right.type).toBe(NodeType.BinOp);
+
+    const body = binop.right as BinOp;
+    if (isLiteralValue(body.left) || isLiteralValue(body.right)){
+      throw new Error('Unexpected literals');
+    }
+    expect(body.left.type).toBe(NodeType.Functor);
+    expect(body.right.type).toBe(NodeType.Functor);
+
+    const first = body.left as Functor;
+    expect(first.args.length).toBe(2);
+    const second = body.right as Functor;
+    expect(second.args.length).toBe(2);
+
+    if (isLiteralValue(first.args[0]) || isLiteralValue(second.args[0])){
+      throw new Error('Unexpected literals');
+    }
+    if (isLiteralValue(first.args[1]) || isLiteralValue(second.args[1])){
+      throw new Error('Unexpected literals');
+    }
+
+    expect(first.args[0].type).toBe(NodeType.Constant);
+    expect(first.args[1].type).toBe(NodeType.NumberLiteral);
+
+    expect(second.args[0].type).toBe(NodeType.Constant);
+    expect(second.args[1].type).toBe(NodeType.NumberLiteral);
+
+  })
+
 })

@@ -1,8 +1,8 @@
 import { ASTNode } from "./ASTNode";
 import { NodeType } from "../NodeTypes";
 import { Term } from "./Term";
-import { isLiteralValue, LiteralValue } from "../../Interpreter/Evaluator";
 import { Variable } from "./Variable";
+import { LiteralValue, isLiteralValue } from "../../Interpreter/LiteralValue";
 
 export type List = EmptyList | NonEmptyList;
 
@@ -35,13 +35,16 @@ export class NonEmptyList extends ASTNode {
   }
 
   public to_string_display(): string {
-    const list = flattenList(this);
-    const tail = list[list.length - 1];
-    return `[${list.slice(0, list.length - 1).map(term => {
-      if (isLiteralValue(term)) return term;
-      return term.to_string_display();
-    })} | ${isLiteralValue(tail) ? tail : tail.to_string_display()}]`;
-  
+    const {head, tail} = flattenList(this);  
+    
+    const headRepresentation = head.map((h) => isLiteralValue(h) ? h : h.to_string_display()).join(', ');
+
+    if (tail === null)
+      return `[${headRepresentation}]`;
+
+    const tailRepresentation = isLiteralValue(tail) ? tail : tail.to_string_display();
+
+    return `[${headRepresentation} | ${tailRepresentation}]`;
   }
 
   public copy(identifier?: string, introducedBy?: string): NonEmptyList {
@@ -50,12 +53,31 @@ export class NonEmptyList extends ASTNode {
   }
 }
 
-function flattenList(list: List | Variable): (Term | LiteralValue)[] {
-  if (list.type === NodeType.EmptyList) return [];
+function flattenList(list: List | Variable): {head: (Term | LiteralValue)[], tail: Term | LiteralValue | null} {
+  if (list.type === NodeType.EmptyList) 
+    return {
+      head: [],
+      tail: null
+    }
   if (list.type === NodeType.NonEmptyList) {
     const nonEmptyList = list as NonEmptyList;
-    return [nonEmptyList.head, ...flattenList(nonEmptyList.tail)];
+    if (nonEmptyList.tail.type === NodeType.EmptyList)
+      return {
+        head: [nonEmptyList.head],
+        tail: null
+      }
+    
+    const {head: restHead, tail} = flattenList(nonEmptyList.tail);
+    
+    return {
+      head: [nonEmptyList.head, ...restHead],
+      tail
+    };
   }
-  if (list.type === NodeType.Variable) return [list];
+  if (list.type === NodeType.Variable)
+    return {
+      head: [],
+      tail: list as Variable
+    };
   throw new Error('Unreachable');
 }

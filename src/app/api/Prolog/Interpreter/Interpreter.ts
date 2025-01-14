@@ -10,10 +10,11 @@ import { TokenType } from "../Lexer/Token";
 import { NodePL, PLNodeType } from "../PrologTree/NodePL";
 import { compare } from "./Comparer";
 import { evaluate } from "./Evaluator";
-import { RecursiveTypeError } from "./Resolver";
-import { emptyUnifier, Unifier, unify } from "./Unifier";
+import { RecursiveTypeError } from "./Unifier/Resolver";
 import { extractVariableNames } from "./VariableExtractor";
-import { isLiteralValue } from "./LiteralValue";
+import { isLiteralValue, LiteralValue } from "./LiteralValue";
+import { Unifier } from "./Unifier/Unifier";
+import { getUnifier, emptyUnifier } from "./Unifier/GetUnifier";
 
 export class SemanticError extends Error {
   constructor(message: string){
@@ -28,7 +29,7 @@ export class Interpreter {
   private readonly clauseNameNumbers: number[];
   private jumpingToCut: string | null = null;
 
-  private solutions: Unifier[] = [];
+  private solutions: Map<string, string>[] = [];
   
   private totalSolutions: number = 0;
   private depth: number = 0;
@@ -36,7 +37,7 @@ export class Interpreter {
   private maxDepth: number | null = null;
   private maxSolutions: number | null = null;
 
-  private queryVariables: Set<string>;
+  private queryVariables: string[];
   
   constructor(private readonly clauses: Clause[], private readonly query: Subclause[][]){
     this.clauseUsageCounters = new Array(clauses.length).fill(0);
@@ -55,12 +56,14 @@ export class Interpreter {
       this.clauseNameNumbers[i] = clauseNameUsages.get(name)!;
     }
 
-    this.queryVariables = new Set<string>();
+    const queryVariableSet = new Set<string>();
     for (const query of this.query){
       for (const subclause of query){
-        extractVariableNames(subclause).forEach(v => this.queryVariables.add(v));
+        extractVariableNames(subclause).forEach(v => queryVariableSet.add(v));
       }
     }
+
+    this.queryVariables = Array.from(queryVariableSet);
     
   }
 
@@ -88,7 +91,7 @@ export class Interpreter {
     );
   }
 
-  public interpret(solveOptions: SolveOptions): {trees: NodePL[], solutions: Unifier[]}{
+  public interpret(solveOptions: SolveOptions): {trees: NodePL[], solutions: Map<string, string>[]}{
     
     if (solveOptions.depth){
       this.maxDepth = solveOptions.depth;
@@ -127,22 +130,40 @@ export class Interpreter {
   }
 
   private SLD_resolve(query: Subclause[], unifiers: Unifier[] = [], parentId: string): NodePL[]{  
-    // console.log("SLD RESOLVE: unifiers " + unifiers.map(u => u.to_string()).join(", ") + " query " + query.map(q => q.to_string_display()).join(", "));
+    // console.log("SLD_resolve "
+    //   + "query " + query.map(q => q.to_string_display()).join(", ") + "\n"
+    // );
+    
     if (query.length == 0){
-      const complete_unifier = composeUnifiers(unifiers).restrict(this.queryVariables);
+
+      const solution = new Map<string, string>();
+      for (const variable of this.queryVariables){
+        const value = applyUnifiers(unifiers, variable);
+        if (value == null) continue;
+        if (typeof value == "string") continue;
+        if (!isLiteralValue(value) && value.type == NodeType.Variable){
+          const variableNode = value as Variable;
+
+          if (variableNode.name == variable) continue;
+        }
+        solution.set(variable, value.to_string_display());
+      }
+      const solutionText = Array.from(solution.entries()).map(([key, value]) => {
+        return key + " = " + value;
+      }).join(', ');
 
       const answ: NodePL = {
         id: this.uniqueNodeId(),
         parentId: parentId,
         type: PLNodeType.SuccessNode,
-        unifierText: complete_unifier.to_string(),
+        unifierText: solutionText,
         appliedClause: null,
         objective: 'Success!',
         children: []
       }
 
       this.totalSolutions++;
-      this.solutions.push(complete_unifier);
+      this.solutions.push(solution);
 
       return [answ];
     }
@@ -172,10 +193,45 @@ export class Interpreter {
 
       this.jumpingToCut = (head as Cut).introducedBy;
 
+      this.depth--;
       return [tree];
     } 
     
     const functor = head as Functor;
+
+    const builtinUnifier = this.tryBuiltinFunctor(functor);
+    if (builtinUnifier === false){
+      const failureNode: NodePL = {
+        id: this.uniqueNodeId(),
+        parentId: parentId,
+        type: PLNodeType.FailureNode,
+        unifierText: 'Failure',
+        appliedClause: null,
+        objective: 'Failure',
+        children: []
+      }
+
+      this.depth--;
+      return [failureNode];
+    }
+    else if (builtinUnifier instanceof Unifier){
+      const thisNodeId = this.uniqueNodeId();
+      const children = this.SLD_resolve(query.slice(1), unifiers.concat(builtinUnifier), thisNodeId);
+      const tree: NodePL = {
+        id: thisNodeId,
+        parentId: parentId,
+        type: PLNodeType.InteriorNode,
+        unifierText: builtinUnifier.to_string(),
+        appliedClause: functor.to_string_display(),
+        objective: getObjectiveText(query.slice(1)),
+        children: children
+      }
+
+      this.depth--;
+      return [tree];
+    }
+
+    // Builtin unifier not found, try to unify with a clause
 
     const trees: NodePL[] = [];
     for (let i = 0; i < this.clauses.length; i++){
@@ -184,12 +240,12 @@ export class Interpreter {
       const thisId = this.uniqueNodeId();
       const uniqueAlias = this.uniqueAlias(i);
       const aliasedClause = clause.copy(uniqueAlias, thisId);
-      const unifier = unify(aliasedClause.head, functor);
+      const unifier = getUnifier(aliasedClause.head, functor);
 
       if (unifier){
         this.consumeUniqueAlias(i);
         const newUnifiers = unifiers.concat(unifier);
-        const newQuery = applyUnifier(unifier, clause.body.concat(query.slice(1)));
+        const newQuery = applyUnifier(unifier, aliasedClause.body.concat(query.slice(1)));
 
         const children = this.SLD_resolve(newQuery, newUnifiers, thisId);
         const tree: NodePL = {
@@ -244,7 +300,7 @@ export class Interpreter {
         return evaluate(node.args[0]) === evaluate(node.args[1]) ? emptyUnifier() : false;
       case TokenType.UNIFY:
         if (node.args.length != 2) throw new Error("Invalid number of arguments for = operator");
-        const unifier = unify(node.args[0], node.args[1]);
+        const unifier = getUnifier(node.args[0], node.args[1]);
         return unifier ? unifier : false;
       default:
         return "Functor Not Found";
@@ -256,17 +312,14 @@ export class Interpreter {
     const left = node.args[0];
     const right = node.args[1];
 
-    if (isLiteralValue(left) || left.type != NodeType.Variable){
-      throw new SemanticError("Left side of is operator must be a variable " + node.nameToken.line + ":" + node.nameToken.column);
-    }
-
-    const variable = left as Variable;
 
     const value = evaluate(right);
+    console.log("handling is functor " + node.to_string_display(), " right evaluation: " + value.value);
     
+
     try {
-      const answ = unify(variable, value);
-      if (answ == null) return false;
+      const answ = getUnifier(left, value);
+      if (answ === null) return false;
       return answ;
     }
     catch (e){
@@ -280,15 +333,6 @@ export class Interpreter {
   }
 }
 
-function composeUnifiers(unifiers: Unifier[]): Unifier{
-  let unifier = new Unifier(new Map<string, ASTNode>());
-
-  for (const u of unifiers.reverse()){
-    unifier = u.compose(unifier);
-  }
-
-  return unifier;
-}
 
 function getObjectiveText(subclauses: Subclause[]): string{
   return subclauses.map(s => {
@@ -296,12 +340,30 @@ function getObjectiveText(subclauses: Subclause[]): string{
   }).join(", ") + '.';
 }
 
+function applyUnifiers(unifiers: Unifier[], name: string): ASTNode | LiteralValue | null{
+  let result: string | LiteralValue | ASTNode = name;
+  for (const unifier of unifiers.reverse()){
+    if (typeof result == "string"){
+      result = unifier.resolveVariableName(result);
+    }
+    else if (isLiteralValue(result)){
+      break
+    }
+    else {
+      result = unifier.apply(result);
+    }
+  }
+  if (typeof result == "string") return null;
+  return result;
+}
+
 function applyUnifier(unifier: Unifier, subclauses: Subclause[]): Subclause[]{
+  
   return subclauses.map(s => {
     const representation = unifier.apply(s);
     if (isLiteralValue(representation)) throw new Error("Unreachable");
     if (representation.type != NodeType.Functor && representation.type != NodeType.Cut) 
       throw new Error("Unreachable");
     return representation;
-  });
+  }) as Subclause[];
 }

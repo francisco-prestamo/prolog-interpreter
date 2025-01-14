@@ -11,7 +11,7 @@ import { UnOp } from "../AST/Nodes/UnOp";
 import { Variable } from "../AST/Nodes/Variable";
 import { NodeType } from "../AST/NodeTypes";
 import { ParallelASTVisitor } from "./ASTVisitors/ParallelVisitor";
-import { isLiteralValue, LiteralValue } from "./Evaluator";
+import { LiteralValue, isLiteralValue } from "./LiteralValue";
 
 /**
  * 
@@ -52,7 +52,7 @@ class Comparer extends ParallelASTVisitor<void>{
 
   visitLiteralValue(a: LiteralValue, b: ASTNode | LiteralValue): void {
     if (isLiteralValue(b)){
-      if (a != b){
+      if (!a.equals(b)){
         this.equal = false;
       }
       return;
@@ -60,12 +60,12 @@ class Comparer extends ParallelASTVisitor<void>{
     
     switch(b.type){
       case NodeType.NumberLiteral:
-        if (a != (b as NumberLiteral).value){
+        if (a.value != (b as NumberLiteral).value){
           this.equal = false;
         }
         return;
       case NodeType.StringLiteral:
-        if (a != (b as StringLiteral).value){
+        if (a.value != (b as StringLiteral).value){
           this.equal = false;
         }
         return;
@@ -88,7 +88,7 @@ class Comparer extends ParallelASTVisitor<void>{
             this.equal = false;
             return;
           }
-          if (a.left != binop_b.left){
+          if (!a.left.equals(binop_b.left)){
             this.equal = false;
             return;
           }

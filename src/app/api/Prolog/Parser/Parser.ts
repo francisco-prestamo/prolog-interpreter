@@ -29,7 +29,7 @@ export class Parser{
       throw new SyntaxError('Unexpected end of file', null);
     }
     if (expected != this.currentToken()!.type){
-      throw new SyntaxError('Expected ' + expected, this.currentToken()!);
+      throw new SyntaxError('Expected ' + expected + " but received " + this.currentToken()?.type, this.currentToken()!);
     }
     this.cursor++;
   }

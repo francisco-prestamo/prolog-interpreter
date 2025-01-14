@@ -1,10 +1,18 @@
 import { Clause } from "@/app/api/Prolog/AST/Nodes/Clause";
+import { Subclause } from "@/app/api/Prolog/AST/Nodes/Subclause";
 import { Parser } from "@/app/api/Prolog/Parser/Parser";
 
 function parse(text: string): Clause[]{
   const parser = new Parser(text);
 
   return parser.parseClauses();
+}
+
+function parseQuery(text: string): Subclause[][]{
+  const parser = new Parser(text);
+
+  return parser.parseQuery();
+
 }
 
 describe('Parser Tests without disjunction', () => {
@@ -81,6 +89,23 @@ describe('Parser Tests without disjunction', () => {
 
     expect(clause.body.length).toBe(3);
   })
+
+  it('should parse query correctly', () => {
+    const q = parseQuery(`
+      foo(X).
+    `);
+
+    expect(q.length).toBe(1);
+  })
+
+  it('should parse query with multiple subclauses correctly', () => {
+    const q = parseQuery(`
+      foo(X), bar(X).
+    `);
+
+    expect(q.length).toBe(1);
+    expect(q[0].length).toBe(2);
+  })
 })
 
 describe('Parser Tests with disjunction', () => {
@@ -117,4 +142,13 @@ describe('Parser Tests with disjunction', () => {
 
     expect(clauses.length).toBe(20);
   });
+
+  it('should parse member1 program correctly', () => {
+    const clauses = parse(`
+      member1(X, [X|T]) :- X is 1.
+      member1(X, [H|T]) :- member1(X, T).
+    `);
+
+    expect(clauses.length).toBe(2);
+  })
 })

@@ -1,17 +1,17 @@
-import { ASTNode } from "../AST/Nodes/ASTNode";
-import { BinOp } from "../AST/Nodes/BinOp";
-import { Clause } from "../AST/Nodes/Clause";
-import { Constant } from "../AST/Nodes/Constant";
-import { Cut } from "../AST/Nodes/Cut";
-import { Functor } from "../AST/Nodes/Functor";
-import { EmptyList, NonEmptyList } from "../AST/Nodes/List";
-import { NumberLiteral } from "../AST/Nodes/NumberLiteral";
-import { StringLiteral } from "../AST/Nodes/StringLiteral";
-import { UnOp } from "../AST/Nodes/UnOp";
-import { Variable } from "../AST/Nodes/Variable";
-import { NodeType } from "../AST/NodeTypes";
-import { ASTVisitor } from "./ASTVisitors/Visitor";
-import { isLiteralValue, LiteralValue } from "./LiteralValue";
+import { ASTNode } from "../../AST/Nodes/ASTNode";
+import { BinOp } from "../../AST/Nodes/BinOp";
+import { Clause } from "../../AST/Nodes/Clause";
+import { Constant } from "../../AST/Nodes/Constant";
+import { Cut } from "../../AST/Nodes/Cut";
+import { Functor } from "../../AST/Nodes/Functor";
+import { EmptyList, NonEmptyList } from "../../AST/Nodes/List";
+import { NumberLiteral } from "../../AST/Nodes/NumberLiteral";
+import { StringLiteral } from "../../AST/Nodes/StringLiteral";
+import { UnOp } from "../../AST/Nodes/UnOp";
+import { Variable } from "../../AST/Nodes/Variable";
+import { NodeType } from "../../AST/NodeTypes";
+import { ASTVisitor } from "../ASTVisitors/Visitor";
+import { isLiteralValue, LiteralValue } from "../LiteralValue";
 import { Unifier } from "./Unifier";
 
 export class RecursiveTypeError extends Error {
@@ -35,7 +35,7 @@ export class LiteralValueAsListTailError extends Error {
  * @returns The resolved node
  */
 export function resolve(node: ASTNode, unifier: Unifier): ASTNode | LiteralValue {
-  return new Resolver(mapping).resolve(node);
+  return new Resolver(unifier).resolve(node);
 }
 
 class Resolver extends ASTVisitor<ASTNode | LiteralValue>{
@@ -68,8 +68,8 @@ class Resolver extends ASTVisitor<ASTNode | LiteralValue>{
   }
 
   visitVariable(node: Variable): ASTNode | LiteralValue {
-    if (this.mapping.has(node.name)){
-      return this.resolve(this.mapping.get(node.name)!);
+    if (this.unifier.has(node.name)){
+      return this.unifier.apply(node);
     }
     return node;
   }

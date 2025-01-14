@@ -7,7 +7,7 @@ import { NodeType } from "../AST/NodeTypes";
 import { Subclause } from "../AST/Nodes/Subclause";
 import { TokenType } from "../Lexer/Token";
 import { SyntaxError } from "./SyntaxError";
-import { isLiteralValue, LiteralValue } from "../Interpreter/Evaluator";
+import { LiteralValue, isLiteralValue } from "../Interpreter/LiteralValue";
 
 export function extractClausePossibilities(node: ASTNode): Clause[]{
   if (node.type == NodeType.BinOp){

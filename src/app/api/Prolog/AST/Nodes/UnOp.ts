@@ -1,7 +1,7 @@
 import { ASTNode } from "./ASTNode";
 import { NodeType } from "../NodeTypes";
 import { Token } from "../../Lexer/Token";
-import { isLiteralValue, LiteralValue } from "../../Interpreter/Evaluator";
+import { LiteralValue, isLiteralValue } from "../../Interpreter/LiteralValue";
 
 export class UnOp extends ASTNode{
   constructor(public readonly operatorToken: Token, public readonly operand: ASTNode | LiteralValue) {

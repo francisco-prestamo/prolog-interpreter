@@ -1,12 +1,12 @@
 import { Clause } from "./AST/Nodes/Clause";
 import { Interpreter } from "./Interpreter/Interpreter";
-import { Unifier } from "./Interpreter/Unifier";
+import { Unifier } from "./Interpreter/Unifier/Unifier";
 import { Parser } from "./Parser/Parser";
 import { NodePL } from "./PrologTree/NodePL";
 
 export interface ReturnType {
   trees: NodePL[];
-  solutions: Unifier[];
+  solutions: Map<string, string>[];
 }
 
 export interface SolveOptions{

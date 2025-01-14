@@ -1,7 +1,7 @@
 import { Token } from "../../Lexer/Token";
 import { ASTNode } from "./ASTNode";
 import { NodeType } from "../NodeTypes";
-import { isLiteralValue, LiteralValue } from "../../Interpreter/Evaluator";
+import { LiteralValue, isLiteralValue } from "../../Interpreter/LiteralValue";
 
 export class BinOp extends ASTNode {
   constructor(

@@ -1,8 +1,14 @@
-export class DSU<T> {
+export class DSU<T extends string | number> {
   private readonly parent: number[] = [];
   private readonly rank: number[] = [];
   private readonly mapping: Map<number, T> = new Map();
   private readonly inverseMapping: Map<T, number> = new Map();
+  private _fullyDisjoint: boolean = true;
+
+
+  public get fullyDisjoint(): boolean {
+    return this._fullyDisjoint;
+  }
   private get n(): number {
     return this.parent.length;
   }
@@ -11,6 +17,8 @@ export class DSU<T> {
   }
 
   public addElement(x: T): void {
+    if (this.inverseMapping.has(x)) return;
+
     const index = this.parent.length;
     this.parent.push(-1);
     this.rank.push(0);
@@ -23,18 +31,31 @@ export class DSU<T> {
     return this.inverseMapping.has(x);
   }
 
-  public find(x: T): T {
-    if (!this.inverseMapping.has(x)){
-      throw new Error(`Element ${x} not found in DSU`);
+  public find(x: T): T | null {
+    if (!this.hasElement(x)){
+      return null;
     }
     return this.mapping.get(this._find(this.inverseMapping.get(x)!))!;
   }
 
-  public union(x: T, y: T): void {
-    if (!this.inverseMapping.has(x) || !this.inverseMapping.has(y)){
+  /**
+   * 
+   * @returns The representative class to which the elements now belong
+   */
+  public union(x: T, y: T): T {
+    const _x = this.inverseMapping.get(x);
+    const _y = this.inverseMapping.get(y);
+
+    if (_x === undefined || _y === undefined){
       throw new Error(`Element ${x} or ${y} not found in DSU`);
     }
-    this._union(this.inverseMapping.get(x)!, this.inverseMapping.get(y)!);
+
+    if (_x === _y){
+      this._fullyDisjoint = false;
+    }
+    this._union(_x, _y);
+
+    return this.mapping.get(this._find(_x))!;
   }
 
   public same(x: T, y: T): boolean {

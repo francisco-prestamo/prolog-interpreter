@@ -8,17 +8,16 @@ import { Variable } from "../AST/Nodes/Variable";
 import { StringLiteral } from "../AST/Nodes/StringLiteral";
 import { NumberLiteral } from "../AST/Nodes/NumberLiteral";
 import { EmptyList, List, NonEmptyList } from "../AST/Nodes/List";
-import { AssociativityType } from "./AssociativityType";
 import { BinOp } from "../AST/Nodes/BinOp";
 import { UnOp } from "../AST/Nodes/UnOp";
 import LexicalError from "../Lexer/LexicalError";
 import { Cut } from "../AST/Nodes/Cut";
 
 
-type prefixParselet = (operator: Token, operand: ASTNode) => ASTNode;
+type prefixParselet = (parser: PrattParser, operator: Token) => ASTNode;
 
 
-type infixParselet = (left: ASTNode, operator: Token, operand: ASTNode) => ASTNode;
+type infixParselet = (parser: PrattParser, left: ASTNode, operator: Token) => ASTNode;
 
 
 export type OperandNode = {
@@ -27,8 +26,8 @@ export type OperandNode = {
 }
 
 export class PrattParser {
-  private prefixParselets: Map<string, {precedence: number, parselet: prefixParselet, associativityType: AssociativityType}>
-  private infixParselets: Map<string, {precedence: number, parselet: infixParselet, associativityType: AssociativityType}>
+  private prefixParselets: Map<string, {precedence: number, parselet: prefixParselet}>
+  private infixParselets: Map<string, {precedence: number, parselet: infixParselet}>
   private cursor: number = 0;
   private maxPrecedence: number = 0;
 
@@ -37,43 +36,32 @@ export class PrattParser {
   }
 
   constructor(readonly tokens: Token[]) {
-    this.prefixParselets = new Map<string, {precedence: number, parselet: prefixParselet, associativityType: AssociativityType}>();
-    this.infixParselets =  new Map<string, {precedence: number, parselet: infixParselet, associativityType: AssociativityType}>();
-   
+    this.prefixParselets = new Map<string, {precedence: number, parselet: prefixParselet}>();
+    this.infixParselets =  new Map<string, {precedence: number, parselet: infixParselet}>();
+  
+
     this.registerPrefix(
       [TokenType.PLUS, TokenType.MINUS], 
       100, 
-      AssociativityType.fy,
-      (operator: Token, operand: ASTNode) => {
-        return new UnOp(operator, operand);
+      (parser, operator) => {
+        parser.eat(operator.type);
+        return new UnOp(operator, parser.parseExpression(100).node);
       }
     )
 
-    this.registerInfix(
+    this.registerInfix_xfx(
       [TokenType.IMPLIES],
-      1200,
-      AssociativityType.xfx,
-      (left: ASTNode, operator: Token, operand: ASTNode) => {
-        return new BinOp(left, operator, operand);
-      }
+      1200
     )
 
-    this.registerInfix(
+    this.registerInfix_yfx(
       [TokenType.COMMA],
-      1000,
-      AssociativityType.yfx,
-      (left, operator, operand) => {
-        return new BinOp(left, operator, operand);
-      }
+      1000
     );
 
-    this.registerInfix(
+    this.registerInfix_yfx(
       [TokenType.SEMICOLON],
-      1100,
-      AssociativityType.yfx,
-      (left, operator, operand) => {
-        return new BinOp(left, operator, operand);
-      }
+      1100
     );
 
     this.registerInfix(
@@ -88,36 +76,43 @@ export class PrattParser {
         TokenType.LITERAL_EQUAL
       ],
       700,
-      AssociativityType.xfx,
-      (left, operator, right) => {
-        return new Functor(operator, [left, right], null)
+      (parser, left, operator) => {
+        parser.eat(operator.type);
+
+        const right = parser.parseExpression(700 - 1);
+
+        const token = parser.currentToken();
+        const infix = parser.infixParselets.get(token.type);
+        if (infix === undefined || infix.precedence > 700)
+          return new Functor(operator, [left, right.node], null);
+  
+        throw new SyntaxError("Operator " + operator.type + " is not associative", operator);
       }
     )
 
-    this.registerInfix(
+    this.registerInfix_yfx(
       [TokenType.PLUS, TokenType.MINUS],
-      500,
-      AssociativityType.yfx,
-      (left, operator, right) => {
-        return new BinOp(left, operator, right);
-      }
+      500
     )
 
-    this.registerInfix(
+    this.registerInfix_yfx(
       [TokenType.TIMES, TokenType.DIVIDE],
-      400,
-      AssociativityType.yfx,
-      (left, operator, right) => {
-        return new BinOp(left, operator, right);
-      }
+      400
     )
 
-    this.registerInfix(
+    this.registerInfix_xfy(
       [TokenType.POWER],
-      200,
-      AssociativityType.xfy,
-      (left, operator, right) => {
-        return new BinOp(left, operator, right);
+      200
+    )
+
+    this.registerPrefix(
+      [TokenType.LPAR],
+      0,
+      (parser, parenthesis) => {
+        parser.eat(TokenType.LPAR);
+        const xpr = parser.parseExpression(parser.maxPrecedence + 1).node;
+        parser.eat(TokenType.RPAR);
+        return xpr;
       }
     )
   }
@@ -130,19 +125,55 @@ export class PrattParser {
     return this.parseExpression(this.maxPrecedence + 1).node
   }
 
-  private registerPrefix(names: string[], precedence: number, associativityType: AssociativityType, parselet: prefixParselet){
-    names.map(name => this.prefixParselets.set(name, {precedence, parselet, associativityType}));
+  private registerPrefix(names: string[], precedence: number, parselet: prefixParselet){
+    names.map(name => this.prefixParselets.set(name, {precedence, parselet}));
     this.maxPrecedence = Math.max(precedence, this.maxPrecedence);
   }
 
-  private registerInfix(names: string[], precedence: number, associativityType: AssociativityType, parselet: infixParselet){
-    names.map(name => this.infixParselets.set(name, {precedence, parselet, associativityType}));
+  private registerInfix(names: string[], precedence: number, parselet: infixParselet){
+    names.map(name => this.infixParselets.set(name, {precedence, parselet}));
     this.maxPrecedence = Math.max(precedence, this.maxPrecedence);
+  }
+
+  private registerInfix_yfx(names: string[], precedence: number){
+    this.registerInfix(names, precedence, (parser, left, operator) => {
+      parser.eat(operator.type);
+
+      const right = parser.parseExpression(precedence - 1).node;
+
+      return new BinOp(left, operator, right);
+    })
+  }
+
+  private registerInfix_xfx(names: string[], precedence: number){
+    this.registerInfix(names, precedence, (parser, left, operator) => {
+      parser.eat(operator.type);
+
+      const right = parser.parseExpression(precedence - 1);
+      
+      const token = parser.currentToken();
+      const infix = parser.infixParselets.get(token.type);
+      if (infix === undefined || infix.precedence > precedence)
+        return new BinOp(left, operator, right.node);
+
+      throw new SyntaxError("Operator " + operator.type + " is not associative", operator);
+
+    })
+  }
+
+  private registerInfix_xfy(names: string[], precedence: number){
+    this.registerInfix(names, precedence, (parser, left, operator) => {
+      parser.eat(operator.type);
+
+      const right = parser.parseExpression(precedence);
+
+      return new BinOp(left, operator, right.node);
+    })
   }
 
 
 
-  private currentToken() {
+  public currentToken() {
     return this.tokens[this.cursor];
   }
 
@@ -161,6 +192,7 @@ export class PrattParser {
   }
 
   private parseExpression(precedence: number): OperandNode{
+    // console.log("Parsing expression '" + this.tokens.map(t => t).join(" ") + "' at precedence " + precedence)
     let left = this.parsePrefix(precedence);
 
     let token = this.currentToken();
@@ -170,109 +202,39 @@ export class PrattParser {
 
 
     let foundOperatorPrecedence = infix.precedence;
-    let foundOperatorAssociativity = infix.associativityType;
     
-    while(precedence >= foundOperatorPrecedence){
-      switch(foundOperatorAssociativity){
-        case AssociativityType.xfx:
-          if (precedence > foundOperatorPrecedence){
-            this.consume();
-            left = {
-              node: infix.parselet(left.node, token, this.parseExpression(foundOperatorPrecedence - 1).node), 
-              outermostPrecedence: foundOperatorPrecedence
-            };
-            return left
-          }
-          else
-            return left
-        case AssociativityType.xfy:
-          if (precedence >= foundOperatorPrecedence){
-            this.consume();
-            left = {
-              node: infix.parselet(left.node, token, this.parseExpression(foundOperatorPrecedence).node),
-              outermostPrecedence: foundOperatorPrecedence
-            }
-            break;
-          }
-          else
-            return left
-        case AssociativityType.yfx:
-          if (precedence > foundOperatorPrecedence){
-            left = this.parse_yfx(left.node, foundOperatorPrecedence);
-            break;
-          }
-          else
-            return left
-        default:
-          throw new Error('Invalid associativity ' + foundOperatorAssociativity + ' for infix operator ' + token.value);
+    while(foundOperatorPrecedence <= precedence){
+      left = {
+        node: infix.parselet(this, left.node, token),
+        outermostPrecedence: infix.precedence
       }
-
+    
       token = this.currentToken();
-
       infix = this.infixParselets.get(token.type)
-      if (infix == undefined) return left;
-
+      if (infix == undefined) break;
       foundOperatorPrecedence = infix.precedence;
-      foundOperatorAssociativity = infix.associativityType;
     }
 
     return left;
   }
 
-  private parse_yfx(left: ASTNode, precedence: number): OperandNode{
-    let token = this.currentToken();
-    let infix = this.infixParselets.get(token.value);
-    if (infix == undefined) return {node: left, outermostPrecedence: precedence};
-
-    while(infix.precedence == precedence && infix.associativityType == AssociativityType.yfx){
-      this.consume();
-      left = infix.parselet(left, token, this.parseExpression(precedence - 1).node);
-
-      token = this.currentToken();
-      infix = this.infixParselets.get(token.value);
-      if (infix == undefined) return {node: left, outermostPrecedence: precedence};
-    }
-
-    return {node: left, outermostPrecedence: precedence};
-  }
 
   private parsePrefix(precedence: number): OperandNode{
     const token = this.currentToken();
-
-    if (token.type == TokenType.LPAR){
-      this.consume();
-      const expression = this.parseExpression(this.maxPrecedence + 1);
-      this.eat(TokenType.RPAR);
-      return expression;
-    }
 
     const prefix = this.prefixParselets.get(token.type);
     if (prefix == undefined){
       return {node: this.parseTermOrFunctor(), outermostPrecedence: 0};
     }
 
-    this.consume();
+    // this.consume();
 
     const foundOperatorPrecedence = prefix.precedence
     if (precedence < foundOperatorPrecedence){
       throw new SyntaxError("Unexpected token", this.currentToken());
     }
 
-    let left: ASTNode
-
-    const foundOperatorAssociativity = prefix.associativityType
-    switch(foundOperatorAssociativity){
-      case AssociativityType.fx:
-        left = prefix.parselet(token, this.parseExpression(foundOperatorPrecedence - 1).node);
-        break;
-      case AssociativityType.fy:
-        left = prefix.parselet(token, this.parseExpression(foundOperatorPrecedence).node);
-        break;
-      default:
-        throw new Error('Invalid associativity ' + foundOperatorAssociativity + ' for prefix operator ' + token.value);
-    }
-
-    return {node: left, outermostPrecedence: foundOperatorPrecedence};
+    return {node: prefix.parselet(this, token), outermostPrecedence: foundOperatorPrecedence};
   }
 
   private parseTermOrFunctor(): Term | Functor | Cut{

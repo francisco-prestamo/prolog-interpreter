@@ -161,6 +161,7 @@ export class Lexer{
     const {literal, line, column} = this.getIdentifier();
     if (KeyWords.has(literal)){
       this.addToken(KeyWords.get(literal)!, literal, line, column);
+      return;
     }
     this.addToken(TokenType.CONSTANT, literal, line, column);
   }
