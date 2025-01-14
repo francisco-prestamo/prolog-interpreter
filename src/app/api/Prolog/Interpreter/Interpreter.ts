@@ -314,7 +314,6 @@ export class Interpreter {
 
 
     const value = evaluate(right);
-    console.log("handling is functor " + node.to_string_display(), " right evaluation: " + value.value);
     
 
     try {

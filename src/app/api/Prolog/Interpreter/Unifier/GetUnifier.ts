@@ -8,10 +8,13 @@ import { RecursiveTypeError } from "./Resolver";
  * @returns {Unifier | null} The unifier if the nodes can be unified, null otherwise
  */
 export function getUnifier(nodeA: ASTNode | LiteralValue, nodeB: ASTNode | LiteralValue): Unifier | null {
-  let unifierBuilder: UnifierBuilder;
   
   try {
-    unifierBuilder = new UnifierBuilder(nodeA, nodeB);
+    const unifierBuilder = new UnifierBuilder(nodeA, nodeB);
+    if (!unifierBuilder.could_unify){
+      return null;
+    }
+    return unifierBuilder.unifier;
   }
   catch (error){
     if (error instanceof RecursiveTypeError){
@@ -22,10 +25,7 @@ export function getUnifier(nodeA: ASTNode | LiteralValue, nodeB: ASTNode | Liter
     }
   }
 
-  if (!unifierBuilder.could_unify){
-    return null;
-  }
-  return unifierBuilder.unifier;
+  
 }
 
 export function emptyUnifier(): Unifier{

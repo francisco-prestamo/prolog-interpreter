@@ -27,6 +27,7 @@ export class UnifierBuilder extends ParallelASTVisitor<void> {
   }
 
   private unify(nodeA: ASTNode | LiteralValue, nodeB: ASTNode | LiteralValue){
+
     if (isLiteralValue(nodeA)){
       this.visitLiteralValue(nodeA, nodeB);
       return;
@@ -48,8 +49,24 @@ export class UnifierBuilder extends ParallelASTVisitor<void> {
       return;
     }
 
-    if (b.type == NodeType.Variable){
-      this.could_unify = this.unifier.tryAssign(b as Variable, a);
+    // if (b.type == NodeType.Variable){
+    //   this.could_unify = this.unifier.tryAssign(b as Variable, a);
+    // }
+
+    // if (b.type == NodeType.NumberLiteral)
+
+    switch(b.type) {
+      case NodeType.Variable:
+        this.could_unify = this.unifier.tryAssign(b as Variable, a);
+        break;
+      case NodeType.NumberLiteral:
+        this.could_unify = a.value === (b as NumberLiteral).value;
+        break;
+      case NodeType.StringLiteral:
+        this.could_unify = a.value === (b as StringLiteral).value;
+        break
+      default:
+        this.could_unify = false;
     }
   }
 
