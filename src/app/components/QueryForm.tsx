@@ -7,8 +7,8 @@ import Tree from "react-d3-tree";
 
 interface TreeNode {
     id: string;
-    // unifier: Record<string, string>;
-    unifierText: string;
+    unifier?: Record<string, string>;
+    // unifierText: string;
     appliedClause: string | null;
     objective: string;
     children: TreeNode[];
@@ -45,8 +45,8 @@ export const QueryForm = (): React.ReactElement => {
 
         return {
             id: node.id,
-            // unifier: unifierObject,
-            unifierText: node.unifierText,
+            unifier: node.unifier,
+            // unifierText: node.unifierText,
             appliedClause: node.appliedClause,
             objective: node.objective,
             children: Array.isArray(node.children) ? node.children.map(transformTreeData) : [],
@@ -99,15 +99,7 @@ export const QueryForm = (): React.ReactElement => {
     };
 
     const renderTree = (node: TreeNode): TreeData => {
-        const unifierAttributes = node.unifierText
-            .split(",")
-            .reduce((acc, part, index) => {
-                const cleanedPart = part.trim();
-                if (cleanedPart) {
-                    acc[`${index + 1}`] = cleanedPart;
-                }
-                return acc;
-            }, {} as Record<string, string>);
+        const unifierAttributes = node.unifier ?? {}
 
         if (node.appliedClause) unifierAttributes.APPLIED_CLAUSE = node.appliedClause;
 

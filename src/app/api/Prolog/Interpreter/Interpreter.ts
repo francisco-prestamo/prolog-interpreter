@@ -29,7 +29,7 @@ export class Interpreter {
   private readonly clauseNameNumbers: number[];
   private jumpingToCut: string | null = null;
 
-  private solutions: Map<string, string>[] = [];
+  private solutions: Record<string, string>[] = [];
   
   private totalSolutions: number = 0;
   private depth: number = 0;
@@ -91,7 +91,7 @@ export class Interpreter {
     );
   }
 
-  public interpret(solveOptions: SolveOptions): {trees: NodePL[], solutions: Map<string, string>[]}{
+  public interpret(solveOptions: SolveOptions): {trees: NodePL[], solutions: Record<string, string>[]}{
     
     if (solveOptions.depth){
       this.maxDepth = solveOptions.depth;
@@ -117,7 +117,7 @@ export class Interpreter {
       const rootNode: NodePL = {
         id: rootId,
         type: PLNodeType.RootNode,
-        unifierText: emptyUnifier().to_string(),
+        unifier: emptyUnifier().to_record(),
         appliedClause: null,
         objective: getObjectiveText(query),
         children: rootChildren
@@ -136,7 +136,7 @@ export class Interpreter {
     
     if (query.length == 0){
 
-      const solution = new Map<string, string>();
+      const solution: Record<string, string> = {};
       for (const variable of this.queryVariables){
         const value = applyUnifiers(unifiers, variable);
         if (value == null) continue;
@@ -146,17 +146,13 @@ export class Interpreter {
 
           if (variableNode.name == variable) continue;
         }
-        solution.set(variable, value.to_string_display());
+        solution[variable] = value.to_string_display();
       }
-      const solutionText = Array.from(solution.entries()).map(([key, value]) => {
-        return key + " = " + value;
-      }).join(', ');
-
       const answ: NodePL = {
         id: this.uniqueNodeId(),
         parentId: parentId,
         type: PLNodeType.SuccessNode,
-        unifierText: solutionText,
+        unifier: solution,
         appliedClause: null,
         objective: 'Success!',
         children: []
@@ -185,7 +181,7 @@ export class Interpreter {
         id: thisNodeId,
         parentId: parentId,
         type: PLNodeType.InteriorNode,
-        unifierText: emptyUnifier().to_string(),
+        unifier: emptyUnifier().to_record(),
         appliedClause: '!',
         objective: getObjectiveText(query.slice(1)),
         children: children
@@ -205,7 +201,7 @@ export class Interpreter {
         id: this.uniqueNodeId(),
         parentId: parentId,
         type: PLNodeType.FailureNode,
-        unifierText: 'Failure',
+        // unifier: 'Failure',
         appliedClause: null,
         objective: 'Failure',
         children: []
@@ -221,7 +217,7 @@ export class Interpreter {
         id: thisNodeId,
         parentId: parentId,
         type: PLNodeType.InteriorNode,
-        unifierText: builtinUnifier.to_string(),
+        unifier: builtinUnifier.to_record(),
         appliedClause: functor.to_string_display(),
         objective: getObjectiveText(query.slice(1)),
         children: children
@@ -251,7 +247,7 @@ export class Interpreter {
         const tree: NodePL = {
           id: thisId,
           type: PLNodeType.InteriorNode,
-          unifierText: unifier.to_string(),
+          unifier: unifier.to_record(),
           appliedClause: this.clauseNameWithNumber(i),
           objective: getObjectiveText(newQuery),
           children: children

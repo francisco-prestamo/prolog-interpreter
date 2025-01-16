@@ -4,7 +4,8 @@ export interface NodePL{
   type: PLNodeType,
   appliedClause: string | null;
   objective: string;
-  unifierText: string;
+  unifier?: Record<string, string>;
+  // unifierText: string;
   children: NodePL[];
 }
 

@@ -6,7 +6,7 @@ import { NodePL } from "./PrologTree/NodePL";
 
 export interface ReturnType {
   trees: NodePL[];
-  solutions: Map<string, string>[];
+  solutions: Record<string, string>[];
 }
 
 export interface SolveOptions{

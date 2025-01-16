@@ -116,9 +116,9 @@ export class Unifier {
    * @param resolution Optional resolution to be assigned to the resulting class
    */
   private joinVariableClasses(
-    aClassRepresentative: string, 
-    bClassRepresentative: string, 
-    resolution: ASTNode | LiteralValue | null)
+      aClassRepresentative: string, 
+      bClassRepresentative: string, 
+      resolution: ASTNode | LiteralValue | null)
     {
 
     const aClassHighestPrecedence = this.highestPrecedenceVariableOfClass.get(aClassRepresentative)!;
@@ -254,20 +254,22 @@ export class Unifier {
     return this.assignments.size == 0 && this.variableClasses.fullyDisjoint;
   }
 
-  public to_string(): string {
-    let str = '';
+  public to_record(): Record<string, string> {
+    const answ: Record<string, string> = {};
     for (const variableClassSet of this.variableClasses.getComponents()){
       const someVariable: string = variableClassSet.values().next().value!;
       const variableClassRepresentative = this.variableClasses.find(someVariable)!;
       const higherPrecedenceVariable = this.highestPrecedenceVariableOfClass.get(variableClassRepresentative)!;
 
-      for (const variable of variableClassSet){
-        if (variable === higherPrecedenceVariable) continue;
+      const isResolved = this.assignments.has(higherPrecedenceVariable);
 
-        str += variable + ' = ' + higherPrecedenceVariable + ', ';
+      for (const variable of variableClassSet){
+        if (!isResolved && variable === higherPrecedenceVariable) continue;
+
+        answ[variable] = (isResolved ? this.assignments.get(higherPrecedenceVariable)!.to_string_display() : higherPrecedenceVariable);
       }
     }
-    return str.slice(0, -2);
+    return answ;
   }
 }
 

@@ -6,12 +6,12 @@ import { Unifier } from "@/app/api/Prolog/Interpreter/Unifier/Unifier";
 import { isLiteralValue, LiteralValue } from "@/app/api/Prolog/Interpreter/LiteralValue";
 
 
-function checkVariable(name: string, unifier: Map<string, string>, value: string){
-  expect(unifier.has(name)).toBe(true);
-  expect(unifier.get(name)).toBe(value);
+function checkVariable(name: string, unifier: Record<string, string>, value: string){
+  expect(unifier[name]).not.toBe(undefined);
+  expect(unifier[name]).toBe(value);
 }
 
-function expectOneSolutionAndGetSingleUnifier(program: string, query: string, solveOptions?: SolveOptions): Map<string, string>{
+function expectOneSolutionAndGetSingleUnifier(program: string, query: string, solveOptions?: SolveOptions): Record<string, string>{
   const prolog = new Prolog(program, query);
   const solutions = prolog.solve(solveOptions).solutions;
   expect(solutions.length).toBe(1);
@@ -28,7 +28,7 @@ describe('Full Program Handling', () => {
     `);
     
     console.log(unifier);
-    expect(unifier.size).toBe(0);
+    expect(Object.values(unifier).length).toBe(0);
   });
 
   it('should find a simple substitution', () => {
@@ -68,7 +68,7 @@ describe('Full Program Handling', () => {
 
     const unifier = expectOneSolutionAndGetSingleUnifier(program, query);
 
-    expect(unifier.size).toBe(0);
+    expect(Object.values(unifier).length).toBe(0);
   })
 
   it('should solve simple program with member and is and find substitution', () => {
@@ -84,6 +84,38 @@ describe('Full Program Handling', () => {
     const unifier = expectOneSolutionAndGetSingleUnifier(program, query);
 
     checkVariable('X', unifier, '1');
+  })
+
+  it('should return only one solution', () => {
+    const program = `
+      member(X, [X | T]).
+      member(X, [H | T]) :- member(X, T).
+    `;
+
+    const query = `member(1, [2, 3, 1, 4, 5]).`;
+
+    const unifier = expectOneSolutionAndGetSingleUnifier(program, query);
+  })
+
+  it('should solve the "TC" set B', () => {
+    const program = `
+      a(X, [], [X]).
+      a(X, [Y | L], [Y | R]) :- a(X, L, R).
+
+      r([], []).
+      r([X | Y], R) :- r(Y, Z), a(X, Z, R).
+
+      m(X, [X | T]).
+      m(X, [H | Y]) :- m(X, Y).
+    `;
+
+    const query = `m(X, [4, 3]), r([1, 2, X], [3, Y, Z]).`;
+
+    const unifier = expectOneSolutionAndGetSingleUnifier(program, query);
+
+    checkVariable('X', unifier, '3');
+    checkVariable('Y', unifier, '2');
+    checkVariable('Z', unifier, '1');
   })
   
 })
