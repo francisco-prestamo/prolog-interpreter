@@ -40,6 +40,8 @@ export enum TokenType {
 
   NUMBER_LITERAL = 'number_literal',
   STRING_LITERAL = 'string_literal',
+
+  UNDERSCORE = '_',
 }
 
 const KeyWords = new Map<string, TokenType>()

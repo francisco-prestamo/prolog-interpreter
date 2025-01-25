@@ -31,4 +31,9 @@ export class UnOp extends ASTNode{
     const operand = this.operand as ASTNode;
     return `${this.operatorToken.value}${operand.to_string_display()}`;
   }
+  public setIntroducedBy(introducedBy: string): void {
+    if (!isLiteralValue(this.operand)) {
+      (this.operand as ASTNode).setIntroducedBy(introducedBy);
+    }
+  }
 }

@@ -4,7 +4,7 @@ import { Token } from "../../Lexer/Token";
 
 export class Cut extends ASTNode {
 
-  constructor(public readonly bangToken: Token, public readonly introducedBy: string | null = null) {
+  constructor(public readonly bangToken: Token, public introducedBy: string | null = null) {
     super(NodeType.Cut)
   }
 
@@ -18,5 +18,9 @@ export class Cut extends ASTNode {
 
   public copy(identifier?: string, introducedBy?: string): Cut {
     return new Cut(this.bangToken, introducedBy);
+  }
+
+  public setIntroducedBy(introducedBy: string): void {
+    this.introducedBy = introducedBy;
   }
 }

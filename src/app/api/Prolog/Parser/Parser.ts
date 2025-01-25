@@ -1,7 +1,7 @@
+import { ASTNode } from "../AST/Nodes/ASTNode";
 import { BinOp } from "../AST/Nodes/BinOp";
 import { Clause } from "../AST/Nodes/Clause";
 import { Functor } from "../AST/Nodes/Functor";
-import { Subclause } from "../AST/Nodes/Subclause";
 import { NodeType } from "../AST/NodeTypes";
 import { Lexer } from "../Lexer/Lexer";
 import { Token, TokenType } from "../Lexer/Token";
@@ -46,7 +46,7 @@ export class Parser{
     return clauses;
   }
 
-  public parseQuery(): Subclause[][]{
+  public parseQuery(): ASTNode[][]{
     const query = this.expressionParser.parse(this.cursor);
 
     this.cursor = this.expressionParser.getCursor();

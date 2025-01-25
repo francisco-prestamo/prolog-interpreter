@@ -294,20 +294,20 @@ describe('Term Parsing', () => {
     if (isLiteralValue(binop.left) || isLiteralValue(binop.right)){
       throw new Error('Unexpected literals');
     }
-    expect(binop.left.type).toBe(NodeType.Constant);
+    expect(binop.left.type).toBe(NodeType.Functor);
     expect(binop.right.type).toBe(NodeType.BinOp);
 
     const body = binop.right as BinOp;
     if (isLiteralValue(body.left) || isLiteralValue(body.right)){
       throw new Error('Unexpected literals');
     }
-    expect(body.left.type).toBe(NodeType.Constant);
-    expect(body.right.type).toBe(NodeType.Constant);
+    expect(body.left.type).toBe(NodeType.Functor);
+    expect(body.right.type).toBe(NodeType.Functor);
   })
 
   it('should parse a :- a is 3, b is 4 correctly', () => {
     const node = parse('a :- a is 3, b is 4');
-    console.log(node.to_string_debug())
+    // console.log(node.to_string_debug())
 
     expect(node.type).toBe(NodeType.BinOp);
     const binop = node as BinOp;
@@ -315,7 +315,7 @@ describe('Term Parsing', () => {
     if (isLiteralValue(binop.left) || isLiteralValue(binop.right)){
       throw new Error('Unexpected literals');
     }
-    expect(binop.left.type).toBe(NodeType.Constant);
+    expect(binop.left.type).toBe(NodeType.Functor);
     expect(binop.right.type).toBe(NodeType.BinOp);
 
     const body = binop.right as BinOp;
@@ -337,10 +337,10 @@ describe('Term Parsing', () => {
       throw new Error('Unexpected literals');
     }
 
-    expect(first.args[0].type).toBe(NodeType.Constant);
+    expect(first.args[0].type).toBe(NodeType.Functor);
     expect(first.args[1].type).toBe(NodeType.NumberLiteral);
 
-    expect(second.args[0].type).toBe(NodeType.Constant);
+    expect(second.args[0].type).toBe(NodeType.Functor);
     expect(second.args[1].type).toBe(NodeType.NumberLiteral);
 
   })

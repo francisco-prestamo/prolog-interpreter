@@ -3,6 +3,7 @@ import { NodeType } from "../NodeTypes";
 import { Term } from "./Term";
 import { Variable } from "./Variable";
 import { LiteralValue, isLiteralValue } from "../../Interpreter/LiteralValue";
+import { randomInt } from "crypto";
 
 export type List = EmptyList | NonEmptyList;
 
@@ -21,6 +22,10 @@ export class EmptyList extends ASTNode {
 
   public copy(): EmptyList {
     return new EmptyList();
+  }
+
+  public setIntroducedBy(introducedBy: string): void {
+    return;
   }
 }
 
@@ -51,9 +56,18 @@ export class NonEmptyList extends ASTNode {
     const head = isLiteralValue(this.head) ? this.head : this.head.copy(identifier, introducedBy) as Term;
     return new NonEmptyList(head, this.tail.copy(identifier, introducedBy));
   }
+
+  public setIntroducedBy(introducedBy: string): void {
+    if (!isLiteralValue(this.head))
+      this.head.setIntroducedBy(introducedBy);
+    this.tail.setIntroducedBy(introducedBy);
+  
+  }
 }
 
 function flattenList(list: List | Variable): {head: (Term | LiteralValue)[], tail: Term | LiteralValue | null} {
+  if (randomInt(2000) == 1)
+  
   if (list.type === NodeType.EmptyList) 
     return {
       head: [],

@@ -21,4 +21,8 @@ export class StringLiteral extends ASTNode{
   public copy(): StringLiteral {
     return new StringLiteral(this.token);
   }
+
+  public setIntroducedBy(introducedBy: string): void {
+    return;
+  }
 }

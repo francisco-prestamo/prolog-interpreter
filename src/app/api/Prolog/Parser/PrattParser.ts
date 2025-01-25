@@ -3,7 +3,6 @@ import { ASTNode } from "../AST/Nodes/ASTNode";
 import { SyntaxError } from "./SyntaxError";
 import { Term } from "../AST/Nodes/Term";
 import { Functor } from "../AST/Nodes/Functor";
-import { Constant } from "../AST/Nodes/Constant";
 import { Variable } from "../AST/Nodes/Variable";
 import { StringLiteral } from "../AST/Nodes/StringLiteral";
 import { NumberLiteral } from "../AST/Nodes/NumberLiteral";
@@ -12,7 +11,10 @@ import { BinOp } from "../AST/Nodes/BinOp";
 import { UnOp } from "../AST/Nodes/UnOp";
 import LexicalError from "../Lexer/LexicalError";
 import { Cut } from "../AST/Nodes/Cut";
+import { Underscore } from "../AST/Nodes/Underscore";
 
+
+const COMMA_PRECEDENCE = 1000;
 
 type prefixParselet = (parser: PrattParser, operator: Token) => ASTNode;
 
@@ -56,7 +58,7 @@ export class PrattParser {
 
     this.registerInfix_yfx(
       [TokenType.COMMA],
-      1000
+      COMMA_PRECEDENCE
     );
 
     this.registerInfix_yfx(
@@ -186,13 +188,12 @@ export class PrattParser {
 
   private eat(expected: TokenType){
     if (this.currentToken().type != expected){
-      throw new LexicalError('Expected ' + expected, this.currentToken().line, this.currentToken().column);
+      throw new LexicalError('Expected ' + expected + ' got ' + this.currentToken().type + ' instead.', this.currentToken().line, this.currentToken().column);
     }
     this.consume();
   }
 
   private parseExpression(precedence: number): OperandNode{
-    // console.log("Parsing expression '" + this.tokens.map(t => t).join(" ") + "' at precedence " + precedence)
     let left = this.parsePrefix(precedence);
 
     let token = this.currentToken();
@@ -241,11 +242,14 @@ export class PrattParser {
     if (this.currentToken().type == TokenType.CONSTANT){
       const nameToken = this.currentToken();
       this.consume();
+      if (nameToken.value == 'fail'){
+        return new Functor(nameToken, [], null);
+      }
       if (this.currentToken().type == TokenType.LPAR){
         this.consume();
         return this.parseFunctor(nameToken);
       }
-      return new Constant(nameToken);
+      return new Functor(nameToken, [], null);
     }
     if (this.currentToken().type == TokenType.BANG){
       const bangToken = this.currentToken()
@@ -261,7 +265,7 @@ export class PrattParser {
       case TokenType.CONSTANT:
         const nameToken = this.currentToken();
         this.consume();
-        return new Constant(nameToken);
+        return new Functor(nameToken, [], null);
 
       case TokenType.VARIABLE:
         const variable = new Variable(this.currentToken());
@@ -280,6 +284,11 @@ export class PrattParser {
 
       case TokenType.LBRACKET:
         return this.parseList();
+      
+      case TokenType.UNDERSCORE:
+        const underscoreToken = this.currentToken();
+        this.consume();
+        return new Underscore(underscoreToken);
 
       default:
         throw new SyntaxError("Unexpected token", this.currentToken());
@@ -288,10 +297,10 @@ export class PrattParser {
 
   private parseFunctor(nameToken: Token): Functor{
     const args: ASTNode[] = []
-    args.push(this.parseTerm());
+    args.push(this.parseExpression(COMMA_PRECEDENCE - 1).node);
     while (this.currentToken().type != TokenType.RPAR){
       this.eat(TokenType.COMMA);
-      args.push(this.parseTerm());
+      args.push(this.parseExpression(COMMA_PRECEDENCE - 1).node);
     }
     this.eat(TokenType.RPAR);
 

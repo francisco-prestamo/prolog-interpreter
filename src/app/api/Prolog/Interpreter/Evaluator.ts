@@ -1,12 +1,12 @@
 import { ASTNode } from "../AST/Nodes/ASTNode";
 import { BinOp } from "../AST/Nodes/BinOp";
 import { Clause } from "../AST/Nodes/Clause";
-import { Constant } from "../AST/Nodes/Constant";
 import { Cut } from "../AST/Nodes/Cut";
 import { Functor } from "../AST/Nodes/Functor";
 import { EmptyList, NonEmptyList } from "../AST/Nodes/List";
 import { NumberLiteral } from "../AST/Nodes/NumberLiteral";
 import { StringLiteral } from "../AST/Nodes/StringLiteral";
+import { Underscore } from "../AST/Nodes/Underscore";
 import { UnOp } from "../AST/Nodes/UnOp";
 import { Variable } from "../AST/Nodes/Variable";
 import { NodeType } from "../AST/NodeTypes";
@@ -102,9 +102,6 @@ class Evaluator extends ASTVisitor<LiteralValue>{
     throw new CannotEvaluateError(NodeType.Clause, node.impliesToken);
   }
 
-  public visitConstant(node: Constant): LiteralValue {
-    throw new CannotEvaluateError(NodeType.Constant, node.token);
-  }
 
   public visitCut(node: Cut): LiteralValue {
     throw new CannotEvaluateError(NodeType.Cut, node.bangToken);
@@ -149,5 +146,9 @@ class Evaluator extends ASTVisitor<LiteralValue>{
 
   public visitVariable(node: Variable): LiteralValue {
     throw new UndefinedVariableError(node);
+  }
+
+  public visitUnderscore(node: Underscore): LiteralValue {
+    throw new CannotEvaluateError(NodeType.Underscore);
   }
 }

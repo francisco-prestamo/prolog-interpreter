@@ -44,6 +44,10 @@ export class Unifier {
     else {
       this.assignToNeitherVariableNorLiteral(variable, value);
     }
+
+    for (const [higherPrecedenceVariable, resolution] of this.assignments.entries()){
+      this.assignments.set(higherPrecedenceVariable, this.apply(resolution));
+    }
   }
 
   /**
@@ -103,6 +107,7 @@ export class Unifier {
     else {
       this.joinVariableClasses(aClass, bClass, null);
     }
+
   }
 
   /**
@@ -147,7 +152,7 @@ export class Unifier {
 
     this.highestPrecedenceVariableOfClass.set(resultingClass, highestPrecedenceVariable);
     if (resolution !== null){
-      this.assignments.set(resultingClass, resolution);
+      this.assignments.set(highestPrecedenceVariable, resolution);
     }
 
   }
@@ -187,7 +192,11 @@ export class Unifier {
    * 
    * @throws {Error} If unification fails
    */
-  private assignToNeitherVariableNorLiteral(a: Variable, b: ASTNode){
+  private assignToNeitherVariableNorLiteral(a: Variable, b: ASTNode){    
+    if (b.type == NodeType.Underscore){
+      return;
+    }
+    
     let aClass = this.variableClasses.find(a.name);
 
     if (aClass === null){
@@ -199,7 +208,6 @@ export class Unifier {
 
     const aClassHighestPrecedence = this.highestPrecedenceVariableOfClass.get(aClass)!;
     const resolved_b = this.apply(b);
-
     if (this.assignments.has(aClassHighestPrecedence)){
       const aAssignment = this.assignments.get(aClassHighestPrecedence)!;
 
@@ -217,11 +225,6 @@ export class Unifier {
   }
   
   public apply(node: ASTNode | LiteralValue): ASTNode | LiteralValue {
-    if (typeof node == "string"){
-      const variable = this.variableNodes.get(node);
-      if (variable === undefined) return node;
-      return this.apply(variable);
-    }
     if (isLiteralValue(node)) return node;
     if (node.type == NodeType.Variable){
       const variable = node as Variable;

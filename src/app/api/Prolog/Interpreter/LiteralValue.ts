@@ -93,5 +93,21 @@ export class LiteralValue{
   public isBooleanLiteral(): boolean{
     return typeof this.value === "boolean";
   }
+
+  public lessThan(other: LiteralValue): boolean {
+    return this.isNumberLiteral() && other.isNumberLiteral() && this.value < other.value;
+  }
+
+  public greaterThan(other: LiteralValue): boolean {
+    return this.isNumberLiteral() && other.isNumberLiteral() && this.value > other.value;
+  }
+
+  public lessThanOrEqual(other: LiteralValue): boolean {
+    return this.isNumberLiteral() && other.isNumberLiteral() && this.value <= other.value;
+  }
+
+  public greaterThanOrEqual(other: LiteralValue): boolean {
+    return this.isNumberLiteral() && other.isNumberLiteral() && this.value >= other.value;
+  }
   
 }

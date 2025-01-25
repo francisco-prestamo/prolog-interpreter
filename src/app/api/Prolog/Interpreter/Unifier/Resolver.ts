@@ -1,12 +1,12 @@
 import { ASTNode } from "../../AST/Nodes/ASTNode";
 import { BinOp } from "../../AST/Nodes/BinOp";
 import { Clause } from "../../AST/Nodes/Clause";
-import { Constant } from "../../AST/Nodes/Constant";
 import { Cut } from "../../AST/Nodes/Cut";
 import { Functor } from "../../AST/Nodes/Functor";
 import { EmptyList, NonEmptyList } from "../../AST/Nodes/List";
 import { NumberLiteral } from "../../AST/Nodes/NumberLiteral";
 import { StringLiteral } from "../../AST/Nodes/StringLiteral";
+import { Underscore } from "../../AST/Nodes/Underscore";
 import { UnOp } from "../../AST/Nodes/UnOp";
 import { Variable } from "../../AST/Nodes/Variable";
 import { NodeType } from "../../AST/NodeTypes";
@@ -20,9 +20,9 @@ export class RecursiveTypeError extends Error {
   }
 }
 
-export class LiteralValueAsListTailError extends Error {
+export class NonListTail extends Error {
   constructor(){
-    super(`Literal value cannot be a list tail.`);
+    super(`List tails can only be lists or variables.`);
   }
 }
 
@@ -74,9 +74,6 @@ class Resolver extends ASTVisitor<ASTNode | LiteralValue>{
     return node;
   }
 
-  visitConstant(node: Constant): ASTNode | LiteralValue {
-    return node;
-  }
 
   visitCut(node: Cut): ASTNode | LiteralValue {
     return node;
@@ -92,8 +89,8 @@ class Resolver extends ASTVisitor<ASTNode | LiteralValue>{
 
   visitNonEmptyList(node: NonEmptyList): ASTNode | LiteralValue {
     const tail = this.resolve(node.tail);
-    if (isLiteralValue(tail)){
-      throw new LiteralValueAsListTailError();
+    if (isLiteralValue(tail) || [NodeType.EmptyList, NodeType.NonEmptyList, NodeType.Variable, NodeType.Underscore].includes(tail.type) == false){
+      throw new NonListTail();
     }
     return new NonEmptyList(this.resolve(node.head), tail);
   }
@@ -108,5 +105,9 @@ class Resolver extends ASTVisitor<ASTNode | LiteralValue>{
 
   visitUnOp(node: UnOp): ASTNode | LiteralValue {
     return new UnOp(node.operatorToken, this.resolve(node.operand));
+  }
+
+  visitUnderscore(node: Underscore): ASTNode | LiteralValue {
+    return node;
   }
 }

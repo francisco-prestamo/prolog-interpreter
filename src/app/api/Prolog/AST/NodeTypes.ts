@@ -2,7 +2,7 @@ export enum NodeType {
   // Atom = "Atom",
   BinOp = "BinOp",
   Clause = "Clause",
-  Constant = "Constant",
+  // Constant = "Constant",
   Functor = "Functor",
   // List = "List",
   NonEmptyList = "NonEmptyList",
@@ -13,5 +13,6 @@ export enum NodeType {
   // Term = "Term",
   UnOp = "UnOp",
   Variable = "Variable",
-  Cut = "Cut"
+  Cut = "Cut",
+  Underscore = "Underscore",
 }

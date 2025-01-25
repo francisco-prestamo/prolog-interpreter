@@ -1,12 +1,12 @@
 import { ASTNode } from "../../AST/Nodes/ASTNode";
 import { BinOp } from "../../AST/Nodes/BinOp";
 import { Clause } from "../../AST/Nodes/Clause";
-import { Constant } from "../../AST/Nodes/Constant";
 import { Cut } from "../../AST/Nodes/Cut";
 import { Functor } from "../../AST/Nodes/Functor";
 import { EmptyList, NonEmptyList } from "../../AST/Nodes/List";
 import { NumberLiteral } from "../../AST/Nodes/NumberLiteral";
 import { StringLiteral } from "../../AST/Nodes/StringLiteral";
+import { Underscore } from "../../AST/Nodes/Underscore";
 import { UnOp } from "../../AST/Nodes/UnOp";
 import { Variable } from "../../AST/Nodes/Variable";
 import { NodeType } from "../../AST/NodeTypes";
@@ -18,8 +18,6 @@ export abstract class ParallelASTVisitor<ReturnType>{
         return this.visitBinOp(a as BinOp, b);
       case NodeType.Clause:
         return this.visitClause(a as Clause, b);
-      case NodeType.Constant:
-        return this.visitConstant(a as Constant, b);
       case NodeType.Cut:
         return this.visitCut(a as Cut, b);
       case NodeType.EmptyList:
@@ -36,13 +34,14 @@ export abstract class ParallelASTVisitor<ReturnType>{
         return this.visitUnOp(a as UnOp, b);
       case NodeType.Variable:
         return this.visitVariable(a as Variable, b);
+      case NodeType.Underscore:
+        return this.visitUnderscore(a as Underscore, b);
       default:
           throw new Error(`Unknown node type: ${a.type}`);  
     }
   }
   abstract visitBinOp(a: BinOp, b: ASTNode): ReturnType;
   abstract visitClause(a: Clause, b: ASTNode): ReturnType;
-  abstract visitConstant(a: Constant, b: ASTNode): ReturnType;
   abstract visitCut(a: Cut, b: ASTNode): ReturnType;
   abstract visitEmptyList(a: EmptyList, b: ASTNode): ReturnType;
   abstract visitFunctor(a: Functor, b: ASTNode): ReturnType;
@@ -51,4 +50,5 @@ export abstract class ParallelASTVisitor<ReturnType>{
   abstract visitStringLiteral(a: StringLiteral, b: ASTNode): ReturnType;
   abstract visitUnOp(a: UnOp, b: ASTNode): ReturnType;
   abstract visitVariable(a: Variable, b: ASTNode): ReturnType;
+  abstract visitUnderscore(a: Underscore, b: ASTNode): ReturnType;
 }

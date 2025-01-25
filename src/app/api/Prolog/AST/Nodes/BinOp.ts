@@ -30,4 +30,13 @@ export class BinOp extends ASTNode {
 
     return new BinOp(left, this.operatorToken, right);
   }
+
+  public setIntroducedBy(introducedBy: string): void {
+    if (!isLiteralValue(this.left)) {
+      (this.left as ASTNode).setIntroducedBy(introducedBy);
+    }
+    if (!isLiteralValue(this.right)) {
+      (this.right as ASTNode).setIntroducedBy(introducedBy);
+    }
+  }
 }

@@ -1,12 +1,12 @@
 import { ASTNode } from "../../AST/Nodes/ASTNode";
 import { BinOp } from "../../AST/Nodes/BinOp";
 import { Clause } from "../../AST/Nodes/Clause";
-import { Constant } from "../../AST/Nodes/Constant";
 import { Cut } from "../../AST/Nodes/Cut";
 import { Functor } from "../../AST/Nodes/Functor";
 import { EmptyList, NonEmptyList } from "../../AST/Nodes/List";
 import { NumberLiteral } from "../../AST/Nodes/NumberLiteral";
 import { StringLiteral } from "../../AST/Nodes/StringLiteral";
+import { Underscore } from "../../AST/Nodes/Underscore";
 import { UnOp } from "../../AST/Nodes/UnOp";
 import { Variable } from "../../AST/Nodes/Variable";
 import { NodeType } from "../../AST/NodeTypes";
@@ -18,8 +18,6 @@ export abstract class ASTVisitor<ReturnType> {
         return this.visitBinOp(node as BinOp);
       case NodeType.Clause:
         return this.visitClause(node as Clause);
-      case NodeType.Constant:
-        return this.visitConstant(node as Constant);
       case NodeType.Cut:
         return this.visitCut(node as Cut);
       case NodeType.EmptyList:
@@ -36,6 +34,8 @@ export abstract class ASTVisitor<ReturnType> {
         return this.visitUnOp(node as UnOp);
       case NodeType.Variable:
         return this.visitVariable(node as Variable);
+      case NodeType.Underscore:
+        return this.visitUnderscore(node as Underscore);
       default:
         throw new Error(`Unknown node type: ${node.type}`);
     }
@@ -43,7 +43,6 @@ export abstract class ASTVisitor<ReturnType> {
 
   abstract visitBinOp(node: BinOp): ReturnType;
   abstract visitClause(node: Clause): ReturnType;
-  abstract visitConstant(node: Constant): ReturnType;
   abstract visitCut(node: Cut): ReturnType;
   abstract visitEmptyList(node: EmptyList): ReturnType;
   abstract visitFunctor(node: Functor): ReturnType;
@@ -52,4 +51,5 @@ export abstract class ASTVisitor<ReturnType> {
   abstract visitStringLiteral(node: StringLiteral): ReturnType;
   abstract visitUnOp(node: UnOp): ReturnType;
   abstract visitVariable(node: Variable): ReturnType;
+  abstract visitUnderscore(node: Underscore): ReturnType;
 }

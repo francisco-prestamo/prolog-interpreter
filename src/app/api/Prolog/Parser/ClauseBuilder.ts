@@ -1,10 +1,8 @@
 import { ASTNode } from "../AST/Nodes/ASTNode";
 import { BinOp } from "../AST/Nodes/BinOp";
 import { Clause } from "../AST/Nodes/Clause";
-import { Cut } from "../AST/Nodes/Cut";
 import { Functor } from "../AST/Nodes/Functor";
 import { NodeType } from "../AST/NodeTypes";
-import { Subclause } from "../AST/Nodes/Subclause";
 import { TokenType } from "../Lexer/Token";
 import { SyntaxError } from "./SyntaxError";
 import { LiteralValue, isLiteralValue } from "../Interpreter/LiteralValue";
@@ -36,21 +34,17 @@ export function extractClausePossibilities(node: ASTNode): Clause[]{
   }
 }
 
-export function extractSubclauses(node: ASTNode | LiteralValue): Subclause[][]{
+export function extractSubclauses(node: ASTNode | LiteralValue): ASTNode[][]{
   if (isLiteralValue(node)){
     throw new Error("Unexpected Literal");
   }
   // we want functors, cuts, or conjunctions or disjunctions of functors
   
   switch(node.type){
-    case NodeType.Functor:
-      return [[(node as Functor)]];
-    case NodeType.Cut:
-      return [[(node as Cut)]];
     case NodeType.BinOp:
       const binOp = node as BinOp;
       if (binOp.operatorToken.type == TokenType.COMMA){
-        const possibilities: Subclause[][] = [];
+        const possibilities: ASTNode[][] = [];
         for (const possibilityLeft of extractSubclauses(binOp.left)){
           for (const possibilityRight of extractSubclauses(binOp.right)){
             possibilities.push([...possibilityLeft, ...possibilityRight]);
@@ -64,7 +58,9 @@ export function extractSubclauses(node: ASTNode | LiteralValue): Subclause[][]{
 
         return [...left, ...right];
       }
+    case NodeType.Clause:
+      throw new SyntaxError(`Unexpected clause as subclause`, (node as Clause).impliesToken);
     default:
-      throw new SyntaxError(`Expected subclause to be a functor, cut, or a conjunction or disjunction of functors, got ${node.to_string_debug()} instead`, null);
+      return [[node]];
   }
 }

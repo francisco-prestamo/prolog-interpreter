@@ -1,12 +1,12 @@
 import { ASTNode } from "../AST/Nodes/ASTNode";
 import { BinOp } from "../AST/Nodes/BinOp";
 import { Clause } from "../AST/Nodes/Clause";
-import { Constant } from "../AST/Nodes/Constant";
 import { Cut } from "../AST/Nodes/Cut";
 import { Functor } from "../AST/Nodes/Functor";
 import { EmptyList, NonEmptyList } from "../AST/Nodes/List";
 import { NumberLiteral } from "../AST/Nodes/NumberLiteral";
 import { StringLiteral } from "../AST/Nodes/StringLiteral";
+import { Underscore } from "../AST/Nodes/Underscore";
 import { UnOp } from "../AST/Nodes/UnOp";
 import { Variable } from "../AST/Nodes/Variable";
 import { NodeType } from "../AST/NodeTypes";
@@ -123,21 +123,6 @@ class Comparer extends ParallelASTVisitor<void>{
     this.equal = false;
   }
 
-  visitConstant(a: Constant, b: ASTNode): void {
-    switch(b.type){
-      case NodeType.Constant:
-        const constant_b = b as Constant;
-        if (a.name != constant_b.name){
-          this.equal = false;
-          return;
-        }
-        return;
-    
-      default:
-        this.equal = false;
-        return;
-    }
-  }
 
   visitCut(a: Cut, b: ASTNode): void {
     this.equal = false;
@@ -249,5 +234,9 @@ class Comparer extends ParallelASTVisitor<void>{
         this.equal = false;
         return;
     }
+  }
+
+  visitUnderscore(a: Underscore, b: ASTNode): void {
+    return;
   }
 }

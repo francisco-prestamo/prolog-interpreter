@@ -38,4 +38,12 @@ export class Functor extends ASTNode {
       return arg.copy(identifier, introducedBy)
     }), this.introducedBy);
   }
+
+  public setIntroducedBy(introducedBy: string): void {
+    for (const arg of this.args) {
+      if (!isLiteralValue(arg)) {
+        arg.setIntroducedBy(introducedBy);
+      }
+    }
+  }
 }

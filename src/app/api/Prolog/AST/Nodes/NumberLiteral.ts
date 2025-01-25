@@ -21,4 +21,8 @@ export class NumberLiteral extends ASTNode{
   public copy(): NumberLiteral {
     return new NumberLiteral(this.token);
   }
+
+  public setIntroducedBy(introducedBy: string): void {
+    return;
+  }
 }

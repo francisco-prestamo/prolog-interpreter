@@ -25,4 +25,8 @@ export class Variable extends ASTNode{
   public to_string_display(): string {
     return this.name;
   }
+
+  public setIntroducedBy(introducedBy: string): void {
+    return;
+  }
 }

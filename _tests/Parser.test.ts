@@ -1,5 +1,7 @@
+import { ASTNode } from "@/app/api/Prolog/AST/Nodes/ASTNode";
 import { Clause } from "@/app/api/Prolog/AST/Nodes/Clause";
-import { Subclause } from "@/app/api/Prolog/AST/Nodes/Subclause";
+import { NodeType } from "@/app/api/Prolog/AST/NodeTypes";
+import { isLiteralValue, LiteralValue } from "@/app/api/Prolog/Interpreter/LiteralValue";
 import { Parser } from "@/app/api/Prolog/Parser/Parser";
 
 function parse(text: string): Clause[]{
@@ -8,11 +10,17 @@ function parse(text: string): Clause[]{
   return parser.parseClauses();
 }
 
-function parseQuery(text: string): Subclause[][]{
+function parseQuery(text: string): ASTNode[][]{
   const parser = new Parser(text);
 
   return parser.parseQuery();
 
+}
+
+function expectNodeOfType(received: ASTNode | LiteralValue, expected: NodeType){
+  expect(isLiteralValue(received)).toBe(false);
+
+  expect((received as ASTNode).type).toBe(expected);
 }
 
 describe('Parser Tests without disjunction', () => {
@@ -151,4 +159,28 @@ describe('Parser Tests with disjunction', () => {
 
     expect(clauses.length).toBe(2);
   })
+
+  it('should parse functor with arbitrary nodes as arguments correctly', () => {
+    const clauses = parse(`
+      foo(X, a(1, b(2, c(3))), X =< 2, Y >= 4) :- bar(X).
+    `);
+
+    // console.log(clauses[0].head.to_string_display())
+
+    expect(clauses.length).toBe(1);
+    expect(clauses[0].head.args.length).toBe(4);
+    
+    const arg1 = clauses[0].head.args[0];
+    expectNodeOfType(arg1, NodeType.Variable);
+
+    const arg2 = clauses[0].head.args[1];
+    expectNodeOfType(arg2, NodeType.Functor);
+
+    const arg3 = clauses[0].head.args[2];
+    expectNodeOfType(arg3, NodeType.Functor);
+
+    const arg4 = clauses[0].head.args[3];
+    expectNodeOfType(arg4, NodeType.Functor);
+
+  });
 })

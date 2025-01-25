@@ -1,7 +1,6 @@
 import { ASTNode } from "../AST/Nodes/ASTNode";
 import { BinOp } from "../AST/Nodes/BinOp";
 import { Clause } from "../AST/Nodes/Clause";
-import { Constant } from "../AST/Nodes/Constant";
 import { Cut } from "../AST/Nodes/Cut";
 import { UnOp } from "../AST/Nodes/UnOp";
 import { Variable } from "../AST/Nodes/Variable";
@@ -11,6 +10,7 @@ import { Functor } from "../AST/Nodes/Functor";
 import { NumberLiteral } from "../AST/Nodes/NumberLiteral";
 import { StringLiteral } from "../AST/Nodes/StringLiteral";
 import { LiteralValue, isLiteralValue } from "./LiteralValue";
+import { Underscore } from "../AST/Nodes/Underscore";
 
 export function extractVariableNames(node: ASTNode | LiteralValue): Set<string> {
   const extractor = new VariableExtractor(node);
@@ -30,9 +30,7 @@ class VariableExtractor extends ASTVisitor<void> {
     if(isLiteralValue(node)){
       return;
     }
-    // console.log("Extracting variables from " + node.to_string_display());
     this.visit(node);
-    // console.log(this.variables);
   }
 
   visitVariable(node: Variable): void {
@@ -53,9 +51,6 @@ class VariableExtractor extends ASTVisitor<void> {
     this.extract(node.operand);
   }
 
-  visitConstant(_node: Constant): void {
-    return;
-  }
 
   visitCut(node: Cut): void {
     return
@@ -79,6 +74,10 @@ class VariableExtractor extends ASTVisitor<void> {
   }
 
   visitStringLiteral(node: StringLiteral): void {
+    return;
+  }
+
+  visitUnderscore(node: Underscore): void {
     return;
   }
 

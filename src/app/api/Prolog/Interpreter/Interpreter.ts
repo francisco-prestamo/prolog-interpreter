@@ -2,7 +2,6 @@ import { ASTNode } from "../AST/Nodes/ASTNode";
 import { Clause } from "../AST/Nodes/Clause";
 import { Cut } from "../AST/Nodes/Cut";
 import { Functor } from "../AST/Nodes/Functor";
-import { Subclause } from "../AST/Nodes/Subclause";
 import { Variable } from "../AST/Nodes/Variable";
 import { NodeType } from "../AST/NodeTypes";
 import { SolveOptions } from "../Interface";
@@ -18,7 +17,7 @@ import { getUnifier, emptyUnifier } from "./Unifier/GetUnifier";
 
 export class SemanticError extends Error {
   constructor(message: string){
-    super(message);
+    super(`Semantic Error: ` + message);
   }
 }
 
@@ -39,7 +38,7 @@ export class Interpreter {
 
   private queryVariables: string[];
   
-  constructor(private readonly clauses: Clause[], private readonly query: Subclause[][]){
+  constructor(private readonly clauses: Clause[], private readonly query: ASTNode[][]){
     this.clauseUsageCounters = new Array(clauses.length).fill(0);
     this.clauseNameNumbers = new Array(clauses.length).fill(1);
     
@@ -112,6 +111,7 @@ export class Interpreter {
       this.jumpingToCut = null;
       const rootId = this.uniqueNodeId();
       this.depth = 0;
+      query.forEach(q => q.setIntroducedBy(rootId));
       const rootChildren = this.SLD_resolve(query, [], rootId);
       
       const rootNode: NodePL = {
@@ -129,11 +129,7 @@ export class Interpreter {
     return {trees: this.trees, solutions: this.solutions};
   }
 
-  private SLD_resolve(query: Subclause[], unifiers: Unifier[] = [], parentId: string): NodePL[]{  
-    // console.log("SLD_resolve "
-    //   + "query " + query.map(q => q.to_string_display()).join(", ") + "\n"
-    // );
-    
+  private SLD_resolve(query: (ASTNode | LiteralValue)[], unifiers: Unifier[] = [], parentId: string): NodePL[]{      
     if (query.length == 0){
 
       const solution: Record<string, string> = {};
@@ -173,6 +169,10 @@ export class Interpreter {
       }
     }
 
+    if (isLiteralValue(head)){
+      throw new SemanticError(`Subclause of type LiteralValue ${head.to_string_display()} cannot be evaluated`);
+    }
+
     if (head.type == NodeType.Cut){
       const thisNodeId = this.uniqueNodeId();
 
@@ -193,6 +193,18 @@ export class Interpreter {
       return [tree];
     } 
     
+    switch (head.type) {
+      case NodeType.BinOp:
+      case NodeType.EmptyList:
+      case NodeType.NonEmptyList:
+      case NodeType.NumberLiteral:
+      case NodeType.StringLiteral:
+      case NodeType.UnOp:
+      case NodeType.Variable:
+      case NodeType.Underscore:
+        throw new SemanticError(`Subclause of type ` + head.type + ' ' + head.to_string_display() + ` cannot be evaluated`);
+    }
+
     const functor = head as Functor;
 
     const builtinUnifier = this.tryBuiltinFunctor(functor);
@@ -212,7 +224,7 @@ export class Interpreter {
     }
     else if (builtinUnifier instanceof Unifier){
       const thisNodeId = this.uniqueNodeId();
-      const children = this.SLD_resolve(query.slice(1), unifiers.concat(builtinUnifier), thisNodeId);
+      const children = this.SLD_resolve(applyUnifier(builtinUnifier, query.slice(1)), unifiers.concat(builtinUnifier), thisNodeId);
       const tree: NodePL = {
         id: thisNodeId,
         parentId: parentId,
@@ -241,7 +253,10 @@ export class Interpreter {
       if (unifier){
         this.consumeUniqueAlias(i);
         const newUnifiers = unifiers.concat(unifier);
-        const newQuery = applyUnifier(unifier, aliasedClause.body.concat(query.slice(1)));
+        
+        let newQuery: (ASTNode | LiteralValue)[] = aliasedClause.body ;
+        newQuery = newQuery.concat(query.slice(1));
+        newQuery = applyUnifier(unifier, newQuery);
 
         const children = this.SLD_resolve(newQuery, newUnifiers, thisId);
         const tree: NodePL = {
@@ -269,6 +284,16 @@ export class Interpreter {
       }
     }
 
+    if (trees.length === 0){
+      trees.push({
+        id: this.uniqueNodeId(),
+        type: PLNodeType.FailureNode,
+        objective: 'Failure',
+        children: [],
+        appliedClause: null
+      })
+    }
+
     return trees;
   }
 
@@ -278,16 +303,16 @@ export class Interpreter {
         return this.handleIsFunctor(node);
       case TokenType.GREATER_OR_EQUAL:
         if (node.args.length != 2) throw new Error("Invalid number of arguments for >= operator");
-        return evaluate(node.args[0]) >= evaluate(node.args[1]) ? emptyUnifier() : false;
+        return evaluate(node.args[0]).greaterThanOrEqual(evaluate(node.args[1])) ? emptyUnifier() : false;
       case TokenType.GREATER:
         if (node.args.length != 2) throw new Error("Invalid number of arguments for > operator");
-        return evaluate(node.args[0]) > evaluate(node.args[1]) ? emptyUnifier() : false;
+        return evaluate(node.args[0]).greaterThan(evaluate(node.args[1])) ? emptyUnifier() : false;
       case TokenType.LESS_OR_EQUAL:
         if (node.args.length != 2) throw new Error("Invalid number of arguments for <= operator");
-        return evaluate(node.args[0]) <= evaluate(node.args[1]) ? emptyUnifier() : false;
+        return evaluate(node.args[0]).lessThanOrEqual(evaluate(node.args[1])) ? emptyUnifier() : false;
       case TokenType.LESS:
         if (node.args.length != 2) throw new Error("Invalid number of arguments for < operator");
-        return evaluate(node.args[0]) < evaluate(node.args[1]) ? emptyUnifier() : false;
+        return evaluate(node.args[0]).lessThan(evaluate(node.args[1])) ? emptyUnifier() : false;
       case TokenType.LITERAL_EQUAL:
         if (node.args.length != 2) throw new Error("Invalid number of arguments for == operator");
         return compare(node.args[0], node.args[1]) ? emptyUnifier() : false;
@@ -298,6 +323,9 @@ export class Interpreter {
         if (node.args.length != 2) throw new Error("Invalid number of arguments for = operator");
         const unifier = getUnifier(node.args[0], node.args[1]);
         return unifier ? unifier : false;
+      case TokenType.CONSTANT:
+        if (node.nameToken.value === 'fail')
+          return false;
       default:
         return "Functor Not Found";
     }
@@ -329,15 +357,15 @@ export class Interpreter {
 }
 
 
-function getObjectiveText(subclauses: Subclause[]): string{
+function getObjectiveText(subclauses: (ASTNode | LiteralValue)[]): string{
   return subclauses.map(s => {
     return s.to_string_display();
   }).join(", ") + '.';
 }
 
-function applyUnifiers(unifiers: Unifier[], name: string): ASTNode | LiteralValue | null{
+function applyUnifiers(unifiers: Unifier[], name: string): ASTNode | LiteralValue | null{  
   let result: string | LiteralValue | ASTNode = name;
-  for (const unifier of unifiers.reverse()){
+  for (const unifier of unifiers){
     if (typeof result == "string"){
       result = unifier.resolveVariableName(result);
     }
@@ -352,13 +380,9 @@ function applyUnifiers(unifiers: Unifier[], name: string): ASTNode | LiteralValu
   return result;
 }
 
-function applyUnifier(unifier: Unifier, subclauses: Subclause[]): Subclause[]{
-  
+function applyUnifier(unifier: Unifier, subclauses: (ASTNode | LiteralValue)[]): (ASTNode | LiteralValue)[]{
   return subclauses.map(s => {
     const representation = unifier.apply(s);
-    if (isLiteralValue(representation)) throw new Error("Unreachable");
-    if (representation.type != NodeType.Functor && representation.type != NodeType.Cut) 
-      throw new Error("Unreachable");
     return representation;
-  }) as Subclause[];
+  });
 }

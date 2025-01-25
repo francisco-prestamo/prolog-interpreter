@@ -136,7 +136,11 @@ export class Lexer{
         case "!":
           this.addToken(TokenType.BANG, TokenType.BANG);
           this.advance();
-          break;        
+          break; 
+        case "_":
+          this.addToken(TokenType.UNDERSCORE, TokenType.UNDERSCORE);
+          this.advance();
+          break;       
         default:
           if (/[a-z]/.test(this.currentChar())){
             this.addConstantOrKeyWord();
