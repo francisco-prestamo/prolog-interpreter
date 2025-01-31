@@ -4,12 +4,15 @@ import { Interpreter, SemanticError } from "./Interpreter/Interpreter";
 import { NonListTail, RecursiveTypeError } from "./Interpreter/Unifier/Resolver";
 import LexicalError from "./Lexer/LexicalError";
 import { Parser } from "./Parser/Parser";
+import { SyntaxError } from "./Parser/SyntaxError";
 import { NodePL } from "./PrologTree/NodePL";
 
 export interface ReturnType {
   trees: NodePL[];
   solutions: Record<string, string>[];
-  errors?: string[]
+  queryParsingErrors?: string[],
+  programParsingErrors?: string[],
+  interpreterErrors?: string[]
 }
 
 export interface SolveOptions{
@@ -21,8 +24,10 @@ export class Prolog{
   constructor(private readonly bodyText: string, private readonly queryText: string){}
 
   public solve(options: SolveOptions = {depth: undefined, solutions: undefined}, caputureErrors: boolean = true): ReturnType{
-    const errors: string[] = []
-    
+    const qerrors: string[] = []
+    const perrors: string[] = []
+    const ierrors: string[] = []
+
     let clauses: Clause[];
     if (this.bodyText.trim() == '') clauses = [];
     else {
@@ -31,7 +36,7 @@ export class Prolog{
         clauses = bodyParser.parseClauses();          
       }
       catch(e){
-        errors.push(this.handleError(e, caputureErrors));
+        perrors.push(this.handleError(e, caputureErrors));
       }
     }
     
@@ -41,14 +46,15 @@ export class Prolog{
       query = queryParser.parseQuery();        
     }
     catch(e){
-      errors.push(this.handleError(e, caputureErrors));
+      qerrors.push(this.handleError(e, caputureErrors));
     }
 
-    if (errors.length > 0){
+    if (qerrors.length > 0 || perrors.length > 0){
       return {
         trees: [],
         solutions: [],
-        errors: errors
+        queryParsingErrors : qerrors.length > 0 ? qerrors : undefined,
+        programParsingErrors : perrors.length > 0 ? perrors : undefined,
       };
     }
 
@@ -59,11 +65,11 @@ export class Prolog{
       return result;
     }
     catch(e){
-      errors.push(this.handleError(e, caputureErrors));
+      ierrors.push(this.handleError(e, caputureErrors));
       return {
         trees: [],
         solutions: [],
-        errors: errors
+        interpreterErrors: ierrors
       };
     }
   

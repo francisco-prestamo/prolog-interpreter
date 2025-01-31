@@ -22,6 +22,11 @@ export class Functor extends ASTNode {
   }
 
   public to_string_display(): string {
+    if (this.args.length == 0)
+    {
+      return this.name
+    }
+
     return `${this.name}(${this.args.map(arg => {
       if (isLiteralValue(arg)) {
         return arg;

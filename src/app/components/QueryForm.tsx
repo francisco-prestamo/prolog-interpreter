@@ -4,6 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { NodePL } from "../api/Prolog/PrologTree/NodePL";
 import Tree from "react-d3-tree";
+import { PrologResponse } from "../api/route";
 
 interface TreeNode {
     id: string;
@@ -58,8 +59,8 @@ export const QueryForm = (): React.ReactElement => {
         setError(null);
 
         try {
-            if (!clauses.trim() || !query.trim()) {
-                throw new Error("Please enter both clauses and query");
+            if ( /* !clauses.trim() || */ !query.trim()) {
+                throw new Error("Please enter a query");
             }
 
             const response = await fetch("/api", {
@@ -72,9 +73,36 @@ export const QueryForm = (): React.ReactElement => {
                 throw new Error(`Error: ${response.status} - ${response.statusText}`);
             }
 
-            const data = await response.json();
+            const data: PrologResponse = (await response.json());
+            console.log('data')
+            
+            if (data.queryParsingErrors){
+                console.log("query parsing error")
+                setError("Query Error: " + data.queryParsingErrors[0]);
+                setTreeData(null);
+                setResult("Error");
+
+                return;
+            }
+
+            if (data.programParsingErrors){
+                setError("Body Error: " + data.programParsingErrors[0]);
+                setTreeData(null);
+                setResult("Error");
+
+                return;
+            }
+
+            if (data.interpreterErrors){
+                setError("Runtime Error: " + data.interpreterErrors[0]);
+                setTreeData(null);
+                setResult("Error");
+
+                return;
+            }
 
             if (data.nodeTree) {
+                console.log("node tree defined")
                 try {
                     setTreeData(transformTreeData(data.nodeTree));
                 } catch (transformError) {
@@ -120,14 +148,15 @@ export const QueryForm = (): React.ReactElement => {
                     placeholder="Enter Prolog clauses (one per line)..."
                     value={clauses}
                     onChange={({ target: { value } }) => setClauses(value)}
-                    className="mb-4 h-32"
+                    className="mb-4 h-32 font-mono"
                     disabled={isLoading}
+
                 />
                 <Textarea
                     placeholder="Enter your Prolog query here..."
                     value={query}
                     onChange={({ target: { value } }) => setQuery(value)}
-                    className="mb-4"
+                    className="mb-4 font-mono"
                     disabled={isLoading}
                 />
                 <Button
