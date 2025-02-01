@@ -54,7 +54,7 @@ This is essentially a collection of AST Visitor interfaces, one for parallel AST
 
 This part of the interpreter takes charge of defining and creating unifiers, as well as providing ways of applying unifiers to an expression. 
 
-It has a UnifierBuilder, which is a paralell AST visitor, and builds unifiers by recursively unifying two ASTs, for example, if it ever reaches the point of unifying a variable node with a numeric literal node, the resulting unifier would have this assignment. 
+It has a UnifierBuilder, which is a parallel AST visitor, and builds unifiers by recursively unifying two ASTs, for example, if it ever reaches the point of unifying a variable node with a numeric literal node, the resulting unifier would have this assignment. 
 
 It has a Resolver, which, given a unifier, is able to resolve an expression, for example, if we apply unifier `{A = 3}` to the AST resulting from `A + A`, we'd get `3 + 3`.
 
@@ -62,7 +62,7 @@ It has a Unifier class, which takes charge of representing unifiers and performi
 
 #### Comparer
 
-This is a paralell AST visitor which sole purpose is defining if two AST nodes are equal.
+This is a parallel AST visitor which sole purpose is defining if two AST nodes are equal.
 
 #### Evaluator
 
