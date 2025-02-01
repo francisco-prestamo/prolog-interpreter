@@ -4,7 +4,10 @@
 
 In order to run the project locally run the following in the root directory:
 
+```bash
 npm run dev
+```
+
 ## Basic Structure
 
 The Prolog interpreter proper is in `src/app/api/Prolog/`. There, in the `Interface.ts` file you can find a convenient entry point the receives a prolog program and a query and returns results or errors (lexing, parsing, or runtime errors)
