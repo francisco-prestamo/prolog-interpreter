@@ -1,5 +1,10 @@
 # Readme
 
+## Team
+
+### Dario Hernandez Cubilla
+### Francisco Prestamo Bernardez
+
 ## Running the project
 
 In order to run the project locally run the following in the root directory:
